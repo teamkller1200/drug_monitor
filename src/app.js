@@ -46,6 +46,7 @@ let editing = null;
 let lockState = store.readOpLock() ?? op.unlocked();
 let lockKey = '';
 let alertsKey = null;
+let solo = null;
 let current = { alerts: [], unknown: [] };
 let hiddenAt = null;
 
@@ -419,7 +420,8 @@ function drugCard(id) {
 function renderHome() {
   const ids = Object.keys(results);
   const blocked = !op.allowed('dose:add', lockState, Date.now(), data.settings);
-  const chips = ids.map((id, i) => h('button', { className: 'chip', type: 'button', 'aria-label': `${nameOf(id)}の詳細を開く`, onclick: (e) => openSheet('detail', e.currentTarget, id) },
+  if (!ids.includes(solo)) solo = null;
+  const chips = ids.map((id, i) => h('button', { className: 'chip', type: 'button', 'data-id': id, 'aria-pressed': String(id === solo), 'aria-label': `${nameOf(id)}のグラフだけを表示`, onclick: () => toggleSolo(id) },
     h('span', { className: 'swatch', style: `border-top-color:${COLORS[i % COLORS.length]};border-top-style:${SWATCH[i % SWATCH.length]}` }), nameOf(id)));
   return [h('div', { className: 'home' },
     ids.length
@@ -433,6 +435,13 @@ function renderHome() {
         : '検証済みの物質がまだありません。出典を確認したデータから順に表示されます。'),
     h('button', { className: 'rec', type: 'button', disabled: blocked, onclick: () => dispatch('nav', () => go('log')) },
       icon(blocked ? 'lock' : 'plus', 24), blocked ? '記録(操作ロック中は停止)' : '記録'))];
+}
+
+// Updates in place: a full render would rebuild the chips and drop keyboard focus.
+function toggleSolo(id) {
+  solo = solo === id ? null : id;
+  for (const chip of document.querySelectorAll('.chip')) chip.setAttribute('aria-pressed', String(chip.dataset.id === solo));
+  drawChart(Date.now());
 }
 
 function tickHome() {
@@ -462,8 +471,9 @@ function drawChart(now) {
   const style = getComputedStyle(document.documentElement);
   const muted = style.getPropertyValue('--muted');
   const from = now - WINDOW_H * H, to = now + WINDOW_H * H;
-  const entries = Object.values(results);
-  const yMax = Math.max(1.1, ...entries.map((r) => Math.max(...r.high) / (r.peak || 1)));
+  // Colors stay tied to the full list so a substance keeps its color when shown alone.
+  const entries = Object.entries(results).map(([id, r], i) => ({ id, r, i })).filter((e) => !solo || e.id === solo);
+  const yMax = Math.max(1.1, ...entries.map(({ r }) => Math.max(...r.high) / (r.peak || 1)));
   const [L, R, T, B] = [34, 10, 22, 24];
   const x = (t) => L + ((t - from) / (to - from)) * (w - L - R);
   const y = (v) => ht - B - (v / yMax) * (ht - T - B);
@@ -492,7 +502,7 @@ function drawChart(now) {
   label('これまで', L + 4, T + 13);
   label('これから(予測)', w - R - 4, T + 13, 'right');
 
-  entries.forEach((r, i) => {
+  entries.forEach(({ r, i }) => {
     const color = COLORS[i % COLORS.length];
     const idx = r.t.flatMap((t, k) => (t >= from && t <= to ? [k] : []));
     if (!idx.length) return;
@@ -522,7 +532,7 @@ function drawChart(now) {
   c.fillStyle = style.getPropertyValue('--text');
   c.font = '700 13px system-ui';
   label('今', x(now), ht - 6, 'center');
-  entries.forEach((r, i) => {
+  entries.forEach(({ r, i }) => {
     c.beginPath();
     c.arc(x(now), y(valueAt(r.t, r.ce, now) / (r.peak || 1)), 4.5, 0, 2 * Math.PI);
     c.fillStyle = style.getPropertyValue('--bg');
