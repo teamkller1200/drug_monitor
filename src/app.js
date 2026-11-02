@@ -1,4 +1,4 @@
-import { expandDoses, simulate, valueAt, phaseAt } from './pk.js';
+import { expandDoses, simulate, valueAt, phaseAt, ethanolMg } from './pk.js';
 import { evaluate, pkMods } from './interactions.js';
 import { createStore, emptyData, validateData } from './store.js';
 import * as op from './oplock.js';
@@ -575,18 +575,33 @@ function renderLog() {
   };
   item.addEventListener('change', fillRoutes);
   fillRoutes();
-  const min = h('input', { id: 'min', type: 'number', min: '0', step: 'any', inputMode: 'decimal', value: src.amount.min ?? '' });
-  const max = h('input', { id: 'max', type: 'number', min: '0', step: 'any', inputMode: 'decimal', value: src.amount.max !== src.amount.min ? src.amount.max ?? '' : '' });
+  const sv = src.serving;
+  const min = h('input', { id: 'min', type: 'number', min: '0', step: 'any', inputMode: 'decimal', value: sv ? sv.mlMin : src.itemId === 'alcohol' ? '' : src.amount.min ?? '' });
+  const max = h('input', { id: 'max', type: 'number', min: '0', step: 'any', inputMode: 'decimal', value: sv ? (sv.mlMax !== sv.mlMin ? sv.mlMax : '') : src.itemId === 'alcohol' ? '' : src.amount.max !== src.amount.min ? src.amount.max ?? '' : '' });
+  const abv = h('input', { id: 'abv', type: 'number', min: '0', max: '100', step: 'any', inputMode: 'decimal', value: sv?.abv ?? '' });
+  const abvLabel = h('label', { className: 'grow' }, '度数(%)', abv);
+  const minText = document.createTextNode('');
+  const minLabel = h('label', { className: 'grow' }, minText, min);
+  const isAlcohol = () => item.value === 'alcohol';
+  const syncUnit = () => {
+    abvLabel.hidden = !isAlcohol();
+    minText.textContent = isAlcohol() ? '量(ml)' : '量(mg、製品は個数)';
+  };
+  item.addEventListener('change', syncUnit);
+  syncUnit();
   const when = h('input', { id: 'when', type: 'datetime-local', value: localInput(src.takenAt ?? Date.now()) });
   const submit = async (e) => {
     e.preventDefault();
-    const lo = Number(min.value), hi = max.value === '' ? lo : Number(max.value);
+    let lo = Number(min.value), hi = max.value === '' ? lo : Number(max.value);
     const takenAt = new Date(when.value);
-    if (!(lo > 0) || !(hi >= lo) || Number.isNaN(takenAt.getTime()) || !route.value) {
-      toast('量と時刻を確認してください(最大は最小以上)');
+    const pct = Number(abv.value);
+    if (!(lo > 0) || !(hi >= lo) || Number.isNaN(takenAt.getTime()) || !route.value || (isAlcohol() && !(pct > 0 && pct <= 100))) {
+      toast(isAlcohol() ? '度数・量・時刻を確認してください(度数は0〜100%、最大は最小以上)' : '量と時刻を確認してください(最大は最小以上)');
       return;
     }
-    const entry = { itemId: item.value, route: route.value, takenAt: takenAt.toISOString(), amount: { min: lo, max: hi } };
+    const serving = isAlcohol() ? { abv: pct, mlMin: lo, mlMax: hi } : undefined;
+    if (serving) { lo = ethanolMg(lo, pct); hi = ethanolMg(hi, pct); }
+    const entry = { itemId: item.value, route: route.value, takenAt: takenAt.toISOString(), amount: { min: lo, max: hi }, serving };
     const back = editing ? 'history' : 'home';
     if (editing) {
       const id = editing.id;
@@ -604,14 +619,18 @@ function renderLog() {
         h('label', {}, '製品・物質', item),
         h('label', {}, '投与経路', route),
         h('div', { className: 'row' },
-          h('label', { className: 'grow' }, '量(mg、製品は個数)', min),
+          abvLabel, minLabel,
           h('label', { className: 'grow' }, '最大(不確かなとき)', max)),
         h('label', {}, '時刻', when),
         h('button', { className: 'primary', type: 'submit' }, editing ? '更新' : '記録する'))),
     last && !editing ? h('button', { disabled: blocked, onclick: () => addDose({ ...last, id: undefined, takenAt: new Date().toISOString() }).then(() => { toast('記録しました'); go('home'); }) },
-      `直前と同じ内容を今記録(${nameOf(last.itemId)} ${last.amount.min})`) : null,
+      `直前と同じ内容を今記録(${doseText(last)})`) : null,
   ];
 }
+
+const doseText = (d) => d.serving
+  ? `${nameOf(d.itemId)} ${d.serving.abv}% ${d.serving.mlMin}${d.serving.mlMax !== d.serving.mlMin ? `-${d.serving.mlMax}` : ''}ml`
+  : `${nameOf(d.itemId)} ${d.amount.min}${d.amount.max !== d.amount.min ? `-${d.amount.max}` : ''}`;
 
 // ---- history ----
 function renderHistory() {
@@ -620,7 +639,7 @@ function renderHistory() {
   return [...data.doses].sort((a, b) => new Date(b.takenAt) - new Date(a.takenAt)).map((d) =>
     h('div', { className: 'card row' },
       h('div', { className: 'grow' },
-        h('div', {}, `${nameOf(d.itemId)} ${d.amount.min}${d.amount.max !== d.amount.min ? `-${d.amount.max}` : ''}`),
+        h('div', {}, doseText(d)),
         h('div', { className: 'muted' }, `${new Date(d.takenAt).toLocaleString('ja-JP')} / ${ROUTE[d.route] ?? d.route}`)),
       h('button', { disabled: blocked, onclick: () => { editing = d; go('log'); } }, '編集'),
       h('button', { disabled: blocked, onclick: () => {

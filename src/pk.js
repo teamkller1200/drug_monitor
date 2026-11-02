@@ -5,6 +5,10 @@ const ZERO_KM = 10;
 const PRESENT_RATIO = 0.05;
 const PEAK_RATIO = 0.8;
 
+const ETHANOL_G_PER_ML = 0.789;
+// Ethanol mass in mg from volume (ml) and strength (% ABV).
+export const ethanolMg = (ml, abvPct) => ml * (abvPct / 100) * ETHANOL_G_PER_ML * 1000;
+
 export function expandDoses(doses, products) {
   return doses.flatMap((d) => {
     const product = products.find((p) => p.id === d.itemId);

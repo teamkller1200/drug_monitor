@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { expandDoses, simulate, simulateDrug, valueAt, phaseAt, isPresent } from '../src/pk.js';
+import { expandDoses, simulate, simulateDrug, valueAt, phaseAt, isPresent, ethanolMg } from '../src/pk.js';
 
 const H = 3600e3;
 const T0 = Date.UTC(2026, 0, 1);
@@ -137,4 +137,9 @@ test('products expand into ingredients', () => {
 
 test('a route without parameters fails loudly', () => {
   assert.throws(() => run(drug, [{ ...dose(1), route: 'nasal' }]), /route nasal/);
+});
+
+test('ethanol mass from volume and strength', () => {
+  assert.ok(Math.abs(ethanolMg(500, 5) - 19725) < 1e-6);
+  assert.equal(ethanolMg(0, 40), 0);
 });
