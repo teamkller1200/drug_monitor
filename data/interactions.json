@@ -1,0 +1,6 @@
+[
+  {
+    "a": "class:cns_depressant", "b": "class:cns_depressant", "kind": "pd", "severity": "fatal",
+    "mechanism": "呼吸抑制の相加", "source": "未確認", "status": "draft"
+  }
+]

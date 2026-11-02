@@ -1,0 +1,28 @@
+[
+  {
+    "id": "caffeine", "name": "カフェイン", "elimination": "linear",
+    "routes": { "oral": { "F": 1, "ka": 3 } },
+    "central": { "halfLifeH": 5, "VdLperKg": 0.6 },
+    "effect": { "ke0": 2 }, "cv": 0.4,
+    "covariates": [{ "on": "smoker", "when": true, "mult": { "cl": 2 } }],
+    "classes": ["stimulant"],
+    "source": "未確認", "status": "draft"
+  },
+  {
+    "id": "alcohol", "name": "アルコール", "elimination": "zero",
+    "routes": { "oral": { "F": 0.9, "ka": 4 } },
+    "central": { "VdLperKg": 0.6, "vmaxMgPerH": 7000 },
+    "cv": 0.3, "classes": ["cns_depressant"],
+    "source": "未確認", "status": "draft"
+  },
+  {
+    "id": "codeine", "name": "コデイン", "elimination": "linear",
+    "routes": { "oral": { "F": 0.9, "ka": 2, "tlagH": 0.2 } },
+    "central": { "halfLifeH": 3, "VdLperKg": 3.5 },
+    "metabolites": [{ "id": "morphine", "frac": 0.1, "halfLifeH": 3, "VdLperKg": 3.5, "active": true }],
+    "effect": { "ke0": 1, "target": "morphine" }, "cv": 0.4,
+    "covariates": [{ "on": "cyp2d6", "when": "low", "mult": { "frac": 0.4 } }],
+    "classes": ["opioid", "cns_depressant"],
+    "source": "未確認", "status": "draft"
+  }
+]

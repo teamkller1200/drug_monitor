@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="theme-color" content="#14161a">
+  <title>Drug Monitor</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+  <div id="lock"></div>
+  <div id="banner" role="alert"></div>
+  <nav id="nav" aria-label="画面の切り替え"></nav>
+  <main id="view"></main>
+  <footer>母集団平均に基づく推定です。実際の血中濃度とは大きく異なることがあります。服薬・用量の判断には使わないでください。</footer>
+  <div id="toast" role="status"></div>
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>
