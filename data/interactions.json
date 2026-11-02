@@ -1,6 +1,19 @@
 [
-  {
-    "a": "class:cns_depressant", "b": "class:cns_depressant", "kind": "pd", "severity": "fatal",
-    "mechanism": "呼吸抑制の相加", "source": "未確認", "status": "draft"
-  }
+  { "a": "drug:alcohol", "b": "class:benzodiazepine", "kind": "pd", "severity": "fatal", "mechanism": "鎮静・呼吸抑制の増強", "source": "TripSit: Dangerous", "status": "verified" },
+  { "a": "drug:alcohol", "b": "class:opioid", "kind": "pd", "severity": "fatal", "mechanism": "鎮静の増強、意識消失と嘔吐による窒息", "source": "TripSit: Dangerous", "status": "verified" },
+  { "a": "drug:alcohol", "b": "drug:tramadol", "kind": "pd", "severity": "fatal", "mechanism": "中枢抑制の増強、けいれん", "source": "TripSit: Dangerous", "status": "verified" },
+  { "a": "drug:alcohol", "b": "drug:dextromethorphan", "kind": "pd", "severity": "fatal", "mechanism": "運動失調と鎮静の増強、意識消失", "source": "TripSit: Dangerous", "status": "verified" },
+  { "a": "drug:alcohol", "b": "drug:diphenhydramine", "kind": "pd", "severity": "fatal", "mechanism": "予測しにくい作用の増強、意識消失", "source": "TripSit: Dangerous", "status": "verified" },
+  { "a": "class:benzodiazepine", "b": "class:opioid", "kind": "pd", "severity": "fatal", "mechanism": "中枢抑制・呼吸抑制の相加", "source": "TripSit: Dangerous", "status": "verified" },
+  { "a": "class:benzodiazepine", "b": "drug:tramadol", "kind": "pd", "severity": "fatal", "mechanism": "中枢抑制・呼吸抑制の相加", "source": "TripSit: Dangerous", "status": "verified" },
+  { "a": "class:benzodiazepine", "b": "drug:dextromethorphan", "kind": "pd", "severity": "caution", "mechanism": "運動失調と鎮静の増強", "source": "TripSit: Caution", "status": "verified" },
+  { "a": "class:benzodiazepine", "b": "drug:diphenhydramine", "kind": "pd", "severity": "danger", "mechanism": "運動失調と鎮静の増強", "source": "TripSit: Unsafe", "status": "verified" },
+  { "a": "class:opioid", "b": "drug:tramadol", "kind": "pd", "severity": "fatal", "mechanism": "けいれんリスクの上昇、オピオイド作用の重複", "source": "TripSit: Dangerous", "status": "verified" },
+  { "a": "class:opioid", "b": "drug:dextromethorphan", "kind": "pd", "severity": "fatal", "mechanism": "中枢抑制、呼吸困難、心臓への影響", "source": "TripSit: Dangerous", "status": "verified" },
+  { "a": "class:opioid", "b": "drug:diphenhydramine", "kind": "pd", "severity": "danger", "mechanism": "中枢抑制の増強", "source": "TripSit: Unsafe", "status": "verified" },
+  { "a": "drug:tramadol", "b": "drug:dextromethorphan", "kind": "pd", "severity": "fatal", "mechanism": "機序の記載なし(危険度のみ)", "source": "TripSit: Dangerous", "status": "verified" },
+  { "a": "drug:tramadol", "b": "drug:diphenhydramine", "kind": "pd", "severity": "fatal", "mechanism": "セロトニン症候群のリスク", "source": "TripSit: Dangerous", "status": "verified" },
+  { "a": "drug:dextromethorphan", "b": "drug:diphenhydramine", "kind": "pd", "severity": "danger", "mechanism": "副作用が感じにくくなり作用が増強される", "source": "TripSit: Unsafe", "status": "verified" },
+  { "a": "drug:dextromethorphan", "b": "drug:caffeine", "kind": "pd", "severity": "caution", "mechanism": "不安の悪化", "source": "TripSit: Caution", "status": "verified" },
+  { "a": "drug:diphenhydramine", "b": "drug:caffeine", "kind": "pd", "severity": "caution", "mechanism": "刺激作用で副作用が隠れる", "source": "TripSit: Caution", "status": "verified" }
 ]

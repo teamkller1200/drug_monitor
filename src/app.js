@@ -194,6 +194,7 @@ function drugCard(id) {
       h('summary', {}, '詳細と出典'),
       h('div', {}, `半減期 ${drug.central.halfLifeH ?? '非線形'} h / 個人差の幅 ±${Math.round((drug.cv ?? 0) * 100)}%`),
       h('div', {}, `補正に使える項目: ${(drug.covariates ?? []).map((c) => c.on).join(', ') || 'なし'}`),
+      drug.note ? h('div', {}, drug.note) : null,
       h('div', {}, `出典: ${drug.source}`),
       h('div', {}, '線形モデルの推定です。実際の値から大きく外れることがあります。')));
 }

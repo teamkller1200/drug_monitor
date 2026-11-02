@@ -12,7 +12,10 @@ test('every entry has a status, and verified entries a real source', () => {
     for (const e of load(f)) {
       assert.ok(['draft', 'verified'].includes(e.status), `${f}: ${JSON.stringify(e)}`);
       assert.ok(e.source, `${f}: missing source`);
-      if (e.status === 'verified') assert.notEqual(e.source, '未確認', `${f}: unverified source`);
+      if (e.status === 'verified') {
+        assert.notEqual(e.source, '未確認', `${f}: unverified source`);
+        assert.ok(!/未取得|仮値/.test(e.note ?? ''), `${f}: verified entry still has placeholder values`);
+      }
     }
   }
 });

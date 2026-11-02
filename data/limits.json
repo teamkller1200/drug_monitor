@@ -1,1 +1,6 @@
-[]
+[
+  { "drug": "acetaminophen", "windowH": 24, "maxMg": 4000, "severity": "fatal", "source": "カロナール添付文書の1日総量上限(肝障害の警告) https://meds.qlifepro.com/detail/1141001X1100/", "status": "verified" },
+  { "drug": "diphenhydramine", "windowH": 24, "maxMg": 150, "severity": "danger", "source": "レスタミンコーワ錠10mg の最大用量 50mg×3回 https://www.pmda.go.jp/PmdaSearch/bookSearch/01/04987770571212", "status": "verified" },
+  { "drug": "dextromethorphan", "windowH": 24, "maxMg": 90, "severity": "danger", "source": "メジコンせき止め錠Pro の1日量 https://www.info.pmda.go.jp/downfiles/otc/PDF/J2101000084_03_A.pdf", "status": "verified" },
+  { "drug": "dihydrocodeine", "windowH": 24, "maxMg": 30, "severity": "danger", "source": "エスエスブロン錠の1日量 https://www.pmda.go.jp/PmdaSearch/otcDetail/170039_J0601012135_08_01", "status": "verified" }
+]

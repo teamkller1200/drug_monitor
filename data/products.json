@@ -1,1 +1,28 @@
-[]
+[
+  {
+    "id": "ss-bron", "name": "エスエスブロン錠", "form": "tablet",
+    "ingredients": [
+      { "drug": "dihydrocodeine", "mgPerUnit": 2.5 },
+      { "drug": "methylephedrine", "mgPerUnit": 4.17 },
+      { "drug": "chlorpheniramine", "mgPerUnit": 0.67 },
+      { "drug": "caffeine", "mgPerUnit": 7.5 }
+    ],
+    "note": "成人1日量12錠中の分量を1錠あたりに換算。塩の質量のまま。",
+    "source": "PMDA https://www.pmda.go.jp/PmdaSearch/otcDetail/170039_J0601012135_08_01",
+    "status": "verified"
+  },
+  {
+    "id": "medicon-pro", "name": "メジコンせき止め錠Pro", "form": "tablet",
+    "ingredients": [{ "drug": "dextromethorphan", "mgPerUnit": 15 }],
+    "note": "6錠中90mgを1錠あたりに換算。塩の質量のまま。",
+    "source": "PMDA https://www.info.pmda.go.jp/downfiles/otc/PDF/J2101000084_03_A.pdf",
+    "status": "verified"
+  },
+  {
+    "id": "restamin-kowa", "name": "レスタミンコーワ糖衣錠", "form": "tablet",
+    "ingredients": [{ "drug": "diphenhydramine", "mgPerUnit": 10 }],
+    "note": "9錠中90mg。販売店の成分表示による。塩の質量のまま。",
+    "source": "https://www.kusurinomadoguchi.com/product/item/28268?p=874",
+    "status": "verified"
+  }
+]

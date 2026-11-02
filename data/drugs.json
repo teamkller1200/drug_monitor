@@ -1,28 +1,127 @@
 [
   {
-    "id": "caffeine", "name": "カフェイン", "elimination": "linear",
-    "routes": { "oral": { "F": 1, "ka": 3 } },
-    "central": { "halfLifeH": 5, "VdLperKg": 0.6 },
-    "effect": { "ke0": 2 }, "cv": 0.4,
-    "covariates": [{ "on": "smoker", "when": true, "mult": { "cl": 2 } }],
-    "classes": ["stimulant"],
-    "source": "未確認", "status": "draft"
+    "id": "codeine", "name": "コデイン", "elimination": "linear",
+    "routes": { "oral": { "F": 0.84, "ka": 1.9 } },
+    "central": { "halfLifeH": 2.9, "VdLperKg": 3.2 }, "cv": 0.4,
+    "classes": ["opioid", "cyp2d6_substrate"],
+    "note": "親化合物のみ。効果の本体であるモルヒネの曲線はVdの出典がないため未対応。kaはTmax 1-1.5hから算出。cvは一律の仮定。",
+    "source": "F: PAGE abstract (Ashraf) https://www.page-meeting.org/Abstracts/a-population-pharmacokinetic-model-to-quantify-the-role-of-in-vivo-cyp2d6-activity-in-codeine-metabolism-for-model-informed-precision-dosing-in-ambulatory-surgical-patients/ / t1/2, Vd: Tuxarin label https://medlibrary.org/lib/rx/meds/tuxarin/page/8/",
+    "status": "verified"
+  },
+  {
+    "id": "tramadol", "name": "トラマドール", "elimination": "linear",
+    "routes": { "oral": { "F": 0.75, "ka": 1.89 } },
+    "central": { "halfLifeH": 6.3, "VdLperKg": 2.7 }, "cv": 0.4,
+    "classes": ["cyp2d6_substrate"],
+    "note": "親化合物のみ。活性代謝物M1は生成割合とVdの出典がないため未対応。米国添付文書の値で日本人データではない。kaはTmax 1.6hから算出。cvは一律の仮定。",
+    "source": "米国添付文書の転載 https://medlibrary.org/lib/rx/meds/tramadol-hcl/",
+    "status": "verified"
+  },
+  {
+    "id": "zolpidem", "name": "ゾルピデム", "elimination": "linear",
+    "routes": { "oral": { "F": 0.7, "ka": 1.19 } },
+    "central": { "halfLifeH": 2.5, "VdLperKg": 0.54 }, "cv": 0.4,
+    "classes": ["benzodiazepine"],
+    "note": "ベンゾジアゼピン系ではないが、同じGABA-A作動薬なので相互作用では同じ分類として扱う(本プロジェクトの判断)。kaはTmax 1.6hから算出。cvは一律の仮定。",
+    "source": "米国添付文書の転載 https://medlibrary.org/lib/rx/meds/zolpidem-tartrate-84/page/5/ / Vd: https://drugmap.idrblab.net/data/drug/details/DMWOSKJ",
+    "status": "verified"
+  },
+  {
+    "id": "diphenhydramine", "name": "ジフェンヒドラミン", "elimination": "linear",
+    "routes": { "oral": { "F": 0.72, "ka": 0.96 } },
+    "central": { "halfLifeH": 5.9, "VdLperKg": 5 }, "cv": 0.5,
+    "classes": ["sedating_antihistamine"],
+    "note": "文献の範囲が広い(t1/2 2.4-9.3h、Vd 3.3-6.8 L/kg)ため中央値を採用。主に二次資料。kaはTmax 2-3hから算出。cvは一律の仮定。",
+    "source": "https://jphcs.biomedcentral.com/articles/10.1186/s40780-021-00215-w/tables/4 / https://www.rxreasoner.com/substances/diphenhydramine/pharmacology",
+    "status": "verified"
   },
   {
     "id": "alcohol", "name": "アルコール", "elimination": "zero",
-    "routes": { "oral": { "F": 0.9, "ka": 4 } },
-    "central": { "VdLperKg": 0.6, "vmaxMgPerH": 7000 },
-    "cv": 0.3, "classes": ["cns_depressant"],
+    "routes": { "oral": { "F": 1, "ka": 4 } },
+    "central": { "VdLperKg": 0.62, "vmaxMgPerH": 7812 }, "cv": 0.3,
+    "classes": [],
+    "note": "吸収の速さ(ka 4/h)は仮定で文献値ではない。実際は食事で大きく変わる。F 1 は Widmark 式と同じ前提。Vdは Widmark 0.68/0.55 の中間、消失は 0.018 g/dL/h から算出。性別の補正は未対応。",
+    "source": "https://www.nist.gov/file/383406",
+    "status": "verified"
+  },
+  {
+    "id": "caffeine", "name": "カフェイン", "elimination": "linear",
+    "routes": { "oral": { "F": 1, "ka": 3.31 } },
+    "central": { "halfLifeH": 5, "VdLperKg": 0.67 }, "cv": 0.4,
+    "classes": [],
+    "note": "Tmax 1h は仮定で文献値ではない。t1/2 は成人の範囲 2-8h の中間で、個人差が大きい。喫煙の補正は数値の出典がないため未対応。",
+    "source": "EFSA https://efsa.europa.eu/sites/default/files/event/documentset/150305-p09.pdf",
+    "status": "verified"
+  },
+  {
+    "id": "diazepam", "name": "ジアゼパム", "elimination": "linear",
+    "routes": { "oral": { "F": 0.9, "ka": 4.63 } },
+    "central": { "halfLifeH": 48, "VdLperKg": 0.9 },
+    "cv": 0.4, "classes": ["benzodiazepine"],
+    "note": "親化合物のみ。活性代謝物デスメチルジアゼパム(t1/2 最大100h)は生成割合の出典がないため未対応で、実際の作用はこの曲線より長く残り得る。Tmax 1.25h は仮定で文献値ではない。",
+    "source": "FDA Valium label https://www.accessdata.fda.gov/drugsatfda_docs/label/2023/013263s097lbl.pdf",
+    "status": "verified"
+  },
+  {
+    "id": "etizolam", "name": "エチゾラム", "elimination": "linear",
+    "routes": { "oral": { "F": 1, "ka": 2.84 } },
+    "central": { "halfLifeH": 3.4, "VdLperKg": 1 }, "cv": 0.5,
+    "classes": ["benzodiazepine"],
+    "note": "未取得: Vd(仮値)、F(仮値)。t1/2 は報告により 3.4-14.8h と差が大きい。活性代謝物 α-ヒドロキシエチゾラムも未対応。添付文書16項を要確認。",
+    "source": "Fracasso 1991 (PMID 2065698) https://go.drugbank.com/articles/A19776",
+    "status": "draft"
+  },
+  {
+    "id": "brotizolam", "name": "ブロチゾラム", "elimination": "linear",
+    "routes": { "oral": { "F": 1, "ka": 2.76 } },
+    "central": { "halfLifeH": 7, "VdLperKg": 1 }, "cv": 0.4,
+    "classes": ["benzodiazepine"],
+    "note": "未取得: Vd(仮値)、F(仮値)。Tmax 1-1.5h、t1/2 約7h は添付文書転載より。",
+    "source": "https://www.pmda.go.jp/PmdaSearch/iyakuDetail/GeneralList/1124009",
+    "status": "draft"
+  },
+  {
+    "id": "dextromethorphan", "name": "デキストロメトルファン (DXM)", "elimination": "linear",
+    "routes": { "oral": { "F": 1, "ka": 1 } },
+    "central": { "halfLifeH": 2.4, "VdLperKg": 5.5 }, "cv": 0.5,
+    "classes": ["cyp2d6_substrate"],
+    "note": "収録不可の理由: 高用量で代謝が飽和するがVmax/Km未取得で、線形モデルは過量時に大きく外れる。CYP2D6欠損型では t1/2 19.1h。F(仮値)、人のka(仮値)も未取得。活性代謝物デキストロルファンも未対応。",
+    "source": "https://pubmed.ncbi.nlm.nih.gov/7593709",
+    "status": "draft"
+  },
+  {
+    "id": "dihydrocodeine", "name": "ジヒドロコデイン", "elimination": "linear",
+    "routes": { "oral": { "F": 0.21, "ka": 2 } },
+    "central": { "halfLifeH": 4, "VdLperKg": 1 }, "cv": 0.4,
+    "classes": ["opioid", "cyp2d6_substrate"],
+    "note": "未取得: Vd(仮値)、Tmax(ka 仮値)。F 21%、t1/2 3.3-4.5h は Rowell 1983。",
+    "source": "Rowell 1983 https://link.springer.com/article/10.1007/BF01037958",
+    "status": "draft"
+  },
+  {
+    "id": "chlorpheniramine", "name": "クロルフェニラミン", "elimination": "linear",
+    "routes": { "oral": { "F": 0.4, "ka": 1 } },
+    "central": { "halfLifeH": 20, "VdLperKg": 3.4 }, "cv": 0.5,
+    "classes": ["sedating_antihistamine"],
+    "note": "未取得: Tmax(ka 仮値)。Vd は抄録の表記が崩れていて原文確認が必要(仮値)。",
+    "source": "https://pubmed.ncbi.nlm.nih.gov/6383755",
+    "status": "draft"
+  },
+  {
+    "id": "methylephedrine", "name": "メチルエフェドリン", "elimination": "linear",
+    "routes": { "oral": { "F": 1, "ka": 1 } },
+    "central": { "halfLifeH": 5, "VdLperKg": 3 }, "cv": 0.5,
+    "classes": [],
+    "note": "未取得: 人の t1/2、Vd、F、Tmax がすべて仮値。公開資料で見つからず。",
     "source": "未確認", "status": "draft"
   },
   {
-    "id": "codeine", "name": "コデイン", "elimination": "linear",
-    "routes": { "oral": { "F": 0.9, "ka": 2, "tlagH": 0.2 } },
-    "central": { "halfLifeH": 3, "VdLperKg": 3.5 },
-    "metabolites": [{ "id": "morphine", "frac": 0.1, "halfLifeH": 3, "VdLperKg": 3.5, "active": true }],
-    "effect": { "ke0": 1, "target": "morphine" }, "cv": 0.4,
-    "covariates": [{ "on": "cyp2d6", "when": "low", "mult": { "frac": 0.4 } }],
-    "classes": ["opioid", "cns_depressant"],
-    "source": "未確認", "status": "draft"
+    "id": "acetaminophen", "name": "アセトアミノフェン", "elimination": "linear",
+    "routes": { "oral": { "F": 1, "ka": 3 } },
+    "central": { "halfLifeH": 2, "VdLperKg": 0.5 }, "cv": 0.4,
+    "classes": [],
+    "note": "未取得: Tmax(ka 仮値)、F(仮値)。t1/2 1.25-3h、V 30.9 L は小規模試験。過量時は半減期が延びる。",
+    "source": "https://medlibrary.org/lib/rx/meds/acetaminophen-and-codeine/page/2/",
+    "status": "draft"
   }
 ]
