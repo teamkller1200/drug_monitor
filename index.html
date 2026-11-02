@@ -4,18 +4,35 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
-  <meta name="theme-color" content="#14161a">
+  <meta name="theme-color" content="#0b1016">
   <title>Drug Monitor</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="src/style.css">
 </head>
 <body>
+  <header id="top">
+    <strong>Drug Monitor</strong>
+    <div id="actions" hidden>
+      <button id="bell" class="glass" type="button" aria-haspopup="dialog" aria-label="警告一覧を開く">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 17.5V11a6 6 0 0 1 12 0v6.500l1.500 1.500h-15zM10 21h4" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linejoin="round" stroke-linecap="round"/></svg>
+        <span id="badge" hidden></span>
+      </button>
+      <button id="sos" class="glass" type="button" aria-haspopup="dialog">
+        <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M10 2.500v15M2.500 10h15" fill="none" stroke="currentColor" stroke-width="4.400"/></svg>緊急
+      </button>
+    </div>
+  </header>
   <div id="lock"></div>
-  <div id="banner" role="alert"></div>
-  <nav id="nav" aria-label="画面の切り替え"></nav>
   <main id="view"></main>
   <footer>母集団平均に基づく推定です。実際の血中濃度とは大きく異なることがあります。服薬・用量の判断には使わないでください。</footer>
+  <nav id="nav" class="glass" aria-label="画面の切り替え"></nav>
+  <div id="alerts" role="alert">
+    <div id="alertCard" hidden></div>
+    <button id="alertFold" class="glass" type="button" hidden></button>
+  </div>
+  <div id="scrim" hidden></div>
+  <section id="sheet" role="dialog" aria-modal="true" aria-label="詳細" hidden></section>
   <div id="toast" role="status"></div>
   <script type="module" src="src/app.js"></script>
 </body>

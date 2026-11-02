@@ -1,7 +1,7 @@
-const CACHE = 'drug-monitor-v1';
+const CACHE = 'drug-monitor-v2';
 const FILES = [
   './', 'index.html', 'manifest.json', 'icon.svg',
-  'src/app.js', 'src/pk.js', 'src/interactions.js', 'src/store.js', 'src/oplock.js', 'src/style.css',
+  'src/app.js', 'src/pk.js', 'src/interactions.js', 'src/store.js', 'src/oplock.js', 'src/motion.js', 'src/style.css',
   'data/drugs.json', 'data/products.json', 'data/interactions.json', 'data/limits.json',
 ];
 

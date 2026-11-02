@@ -2,6 +2,7 @@ import { expandDoses, simulate, valueAt, phaseAt } from './pk.js';
 import { evaluate, pkMods } from './interactions.js';
 import { createStore, emptyData, validateData } from './store.js';
 import * as op from './oplock.js';
+import { Spring, dragY, project, reducedMotion, rubberband } from './motion.js';
 
 const H = 3600e3;
 const MIN = 60e3;
@@ -13,9 +14,18 @@ const VERIFIED_ONLY = !new URLSearchParams(location.search).has('dev');
 const SEVERITY = { caution: '注意', danger: '危険', fatal: '命に関わる' };
 const PHASE = { none: '-', onset: '立ち上がり', peak: 'ピーク域', comedown: 'コムダウン', gone: 'ほぼ消失' };
 const ROUTE = { oral: '経口', sublingual: '舌下', nasal: '鼻腔', inhaled: '吸入', iv: '静注' };
-const COLORS = ['#3f7fd6', '#e0703a', '#2f9e78', '#b257c4', '#c79a1a', '#d24d7a'];
-const DASHES = [[], [8, 4], [2, 4], [12, 4, 2, 4]];
-const TABS = { home: 'ホーム', log: '記録', history: '履歴', profile: 'プロフィール', settings: '設定', help: '緊急' };
+const RANK = { fatal: 0, danger: 1, caution: 2 };
+const TOAST_MS = { danger: 10000, caution: 6000 }; // fatal stays until closed
+const COLORS = ['#6fb5f5', '#d79bea', '#5bccd0', '#dbb47c', '#f08a7a', '#a8d672'];
+const DASHES = [[], [8, 4], [1.5, 4.5], [10, 4, 2, 4]];
+const SWATCH = ['solid', 'dashed', 'dotted', 'dashed'];
+const TABS = { home: 'ホーム', history: '履歴', profile: 'プロフィール', settings: '設定' };
+const ICON = {
+  plus: 'M12 5v14M5 12h14',
+  lock: 'M7 11h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2zM8 11V8a4 4 0 0 1 8 0v3',
+  close: 'M6 6l12 12M18 6 6 18',
+  chevron: 'm9 6 6 6-6 6',
+};
 const CONTACTS = [
   ['救急車', '119', '意識がない、呼吸がおかしい、けいれんがあるときはすぐに'],
   ['大阪中毒110番(一般向け)', '072-727-2499', '中毒の相談'],
@@ -35,7 +45,8 @@ let tab = 'home';
 let editing = null;
 let lockState = store.readOpLock() ?? op.unlocked();
 let lockKey = '';
-let bannerKey = null;
+let alertsKey = null;
+let current = { alerts: [], unknown: [] };
 let hiddenAt = null;
 
 function h(tag, props = {}, ...children) {
@@ -46,6 +57,12 @@ function h(tag, props = {}, ...children) {
     else el.setAttribute(k, v);
   }
   el.append(...children.flat().filter((c) => c !== null && c !== undefined));
+  return el;
+}
+
+function icon(name, size = 20) {
+  const el = h('span', { className: 'ic', 'aria-hidden': 'true' });
+  el.innerHTML = `<svg viewBox="0 0 24 24" width="${size}" height="${size}"><path d="${ICON[name]}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   return el;
 }
 
@@ -136,7 +153,7 @@ function renderLock() {
   const extend = h('button', { onclick: () => dispatch('lock:extend', () => { setLock(op.extend(lockState, Date.now(), 1)); lockKey = ''; renderLock(); }) }, '1時間延長');
   if (key === 'locked') {
     box.append(h('div', { className: 'lockbar row' },
-      h('span', { className: 'grow' }, '操作ロック中 残り ', time),
+      h('b', { className: 'grow' }, '操作ロック中 残り ', time),
       extend,
       h('button', { onclick: () => dispatch('unlock:request', () => {
         const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1e6).padStart(6, '0');
@@ -160,40 +177,236 @@ function renderLock() {
   }
 }
 
-// ---- banner ----
+// ---- alerts ----
 function currentAlerts() {
   return evaluate({ doses, results, drugs: db.drugs, rules: db.rules, limits: db.limits, now: Date.now() });
 }
 
-function renderBanner() {
+const alertKey = (a) => [a.severity, a.items, a.mechanism].join('|');
+const alertText = (a) => h('p', {}, h('b', {}, a.items.map(nameOf).join(' + ')), `: ${a.mechanism ?? ''}`);
+
+function renderAlerts() {
   const { alerts, unknown } = currentAlerts();
   const key = JSON.stringify([alerts, unknown]);
-  if (key === bannerKey) return;
-  bannerKey = key;
-  $('banner').replaceChildren(
-    ...alerts.map((a) => h('div', { className: `alert ${a.severity}` },
+  if (key === alertsKey) return;
+  alertsKey = key;
+  current = { alerts, unknown };
+  syncToasts();
+  renderBell();
+  if (sheetOpen && sheetKind === 'warn') fillSheet();
+}
+
+function renderBell() {
+  const { alerts } = current;
+  const badge = $('badge');
+  badge.hidden = !alerts.length;
+  if (alerts.length) {
+    badge.className = alerts[0].severity;
+    badge.textContent = `${SEVERITY[alerts[0].severity][0]}${alerts.length}`;
+  }
+  $('bell').setAttribute('aria-label', alerts.length ? `警告 ${alerts.length}件(最も重い: ${SEVERITY[alerts[0].severity]})。一覧を開く` : '警告一覧を開く');
+}
+
+// ---- alert toasts: one detection, one toast; the list stays in the bell sheet ----
+const announced = new Set();
+let queue = [];
+let shownKey = null;
+let hiddenY = -400;
+
+const toastY = new Spring(hiddenY, (y) => {
+  const card = $('alertCard');
+  card.style.transform = reducedMotion.matches ? 'none' : `translate3d(0,${y}px,0)`;
+  card.style.opacity = reducedMotion.matches ? (y < 0 ? 0 : 1) : Math.max(0, 1 - (y / hiddenY) * 1.15);
+});
+
+function syncToasts() {
+  const keys = new Set(current.alerts.map(alertKey));
+  for (const k of [...announced]) {
+    if (keys.has(k)) continue;
+    announced.delete(k);
+    dismissToast(k);
+  }
+  for (const alert of current.alerts) {
+    const key = alertKey(alert);
+    if (announced.has(key)) continue;
+    announced.add(key);
+    const ms = TOAST_MS[alert.severity];
+    queue.push({ key, alert, timer: ms ? setTimeout(() => dismissToast(key), ms) : null });
+  }
+  queue.sort((a, b) => RANK[a.alert.severity] - RANK[b.alert.severity]);
+  renderToast();
+}
+
+function renderToast() {
+  const top = queue[0], card = $('alertCard'), fold = $('alertFold');
+  fold.hidden = queue.length < 2;
+  fold.replaceChildren(h('span', {}, `ほか ${queue.length - 1}件`), icon('chevron', 18));
+  if (!top) {
+    shownKey = null;
+    card.hidden = true;
+    return;
+  }
+  if (top.key === shownKey) return;
+  shownKey = top.key;
+  const a = top.alert;
+  card.className = `alert ${a.severity}`;
+  card.hidden = false;
+  card.replaceChildren(
+    h('div', { className: 'alerthead' },
       h('b', {}, SEVERITY[a.severity]),
-      `${a.items.map(nameOf).join(' + ')}: ${a.mechanism ?? ''}`,
-      h('small', {}, `出典: ${a.source}`),
-      a.severity === 'fatal' ? h('small', {}, 'つらい症状があれば ', h('a', { href: 'tel:119' }, '119に電話'), ' / ',
-        h('a', { href: 'tel:072-727-2499' }, '中毒110番')) : null)),
-    unknown.length ? h('details', { className: 'card' },
-      h('summary', {}, `データなしの組み合わせ ${unknown.length}件(安全という意味ではありません)`),
-      unknown.map(([a, b]) => h('div', {}, `${nameOf(a)} + ${nameOf(b)}`))) : '',
-  );
+      h('span', {}, `出典 ${a.source}`),
+      h('button', { className: 'close', type: 'button', 'aria-label': '警告を閉じる', onclick: () => dismissToast(top.key) }, icon('close', 18))),
+    alertText(a));
+  hiddenY = -(card.offsetHeight + 120);
+  toastY.set(hiddenY);
+  requestAnimationFrame(() => toastY.to(0));
+}
+
+function dismissToast(key, v = 0, z = 1) {
+  const item = queue.find((q) => q.key === key);
+  if (!item) return;
+  clearTimeout(item.timer);
+  const remove = () => {
+    queue = queue.filter((q) => q !== item);
+    if (shownKey === key) shownKey = null;
+    renderToast();
+  };
+  if (key === shownKey) toastY.to(hiddenY, { v, z, cb: remove });
+  else remove();
+}
+
+function clearToasts() {
+  queue.forEach((q) => clearTimeout(q.timer));
+  queue = [];
+  announced.clear();
+  alertsKey = null;
+  current = { alerts: [], unknown: [] };
+  toastY.stop();
+  renderToast();
+  renderBell();
+}
+
+// ---- sheets: warnings (bell, 緊急) and per-substance detail ----
+let sheetOpen = false;
+let sheetKind = null;
+let sheetFocus = null;
+let sheetFrom = null;
+
+const sheetP = new Spring(0, (p) => {
+  const el = $('sheet');
+  $('scrim').style.opacity = Math.min(1, Math.max(0, p));
+  if (reducedMotion.matches) {
+    el.style.transform = 'none';
+    el.style.opacity = p > 0 ? 1 : 0;
+  } else if (sheetKind === 'detail') {
+    el.style.transform = `translate3d(0,${(1 - p) * el.offsetHeight}px,0)`;
+    el.style.opacity = 1;
+  } else {
+    el.style.transform = `scale(${0.86 + 0.14 * p})`;
+    el.style.opacity = p;
+  }
+}, 0.002);
+
+function sheetHead(title, grab) {
+  return h('div', { className: `sheethead${grab ? ' grab' : ''}` },
+    grab ? h('span', { className: 'handle' }) : null,
+    h('div', { className: 'sheettitle' },
+      h('h2', {}, title),
+      h('button', { className: 'close', type: 'button', 'aria-label': '閉じる', onclick: () => closeSheet() }, icon('close', 18))));
+}
+
+function warnSheet() {
+  const { alerts, unknown } = current;
+  return [
+    sheetHead(alerts.length ? `警告 ${alerts.length}件` : '警告'),
+    h('div', { className: 'sheetbody' },
+      h('div', { className: 'calls' },
+        h('a', { className: 'call', href: 'tel:119' }, '119に電話'),
+        h('a', { className: 'call', href: 'tel:072-727-2499' }, '大阪中毒110番')),
+      h('button', { className: 'more', type: 'button', onclick: () => go('help') }, 'ほかの相談先'),
+      alerts.length ? alerts.map((a) => h('section', { className: `alert ${a.severity}` },
+        h('b', {}, SEVERITY[a.severity]), h('small', {}, `出典 ${a.source}`), alertText(a)))
+        : h('p', { className: 'muted' }, '現在、検知された警告はありません。'),
+      unknown.length ? h('details', { className: 'nodata' },
+        h('summary', {}, `データなしの組み合わせ ${unknown.length}件(安全という意味ではありません)`),
+        h('p', {}, '情報が見つかっていないだけで、影響がないことを示すものではありません。'),
+        unknown.map(([a, b]) => h('div', {}, `${nameOf(a)} + ${nameOf(b)}`))) : null),
+  ];
+}
+
+function detailSheet() {
+  return [
+    sheetHead('成分の詳細', true),
+    h('div', { className: 'sheetbody' },
+      h('p', { className: 'muted' }, '推定値です。ピーク比は、各物質の推定ピークを100%とした値です。'),
+      Object.keys(results).map(drugCard)),
+  ];
+}
+
+function fillSheet() {
+  const scroll = $('sheet').querySelector('.sheetbody')?.scrollTop ?? 0;
+  $('sheet').replaceChildren(...(sheetKind === 'warn' ? warnSheet() : detailSheet()));
+  const body = $('sheet').querySelector('.sheetbody');
+  if (body) body.scrollTop = scroll;
+  if (tab === 'home') tickHome();
+}
+
+function setBackdropInert(on) {
+  for (const id of ['top', 'lock', 'view', 'nav', 'alerts']) $(id).inert = on;
+}
+
+function openSheet(kind, from, focus = null) {
+  sheetKind = kind;
+  sheetFocus = focus;
+  sheetFrom = from;
+  sheetOpen = true;
+  const el = $('sheet');
+  el.className = kind;
+  el.setAttribute('aria-label', kind === 'warn' ? '警告一覧' : '成分の詳細');
+  el.hidden = false;
+  $('scrim').hidden = false;
+  el.replaceChildren();
+  fillSheet();
+  if (focus) $(`d-${focus}`)?.scrollIntoView({ block: 'center' });
+  setBackdropInert(true);
+  sheetP.to(1);
+  el.querySelector('.close').focus({ preventScroll: true });
+}
+
+function closeSheet(v = 0, z = 1) {
+  if (!sheetOpen) return;
+  sheetOpen = false;
+  setBackdropInert(false);
+  sheetP.to(0, { v, z, cb: () => {
+    if (sheetOpen) return;
+    $('sheet').hidden = true;
+    $('scrim').hidden = true;
+  } });
+  if (sheetFrom?.isConnected) sheetFrom.focus({ preventScroll: true });
+}
+
+function resetSheet() {
+  sheetOpen = false;
+  sheetP.set(0);
+  setBackdropInert(false);
+  $('sheet').hidden = true;
+  $('scrim').hidden = true;
 }
 
 // ---- home ----
 function drugCard(id) {
   const drug = drugById(id);
-  return h('div', { className: 'card' },
-    h('div', {}, drug.name, drug.status === 'estimated' ? h('span', { className: 'badge' }, '概算') : null),
-    drug.ref ? h('div', { className: 'muted' }, `体感の目安: 発現 ${drug.ref.onset} / 持続 ${drug.ref.duration} / 余韻 ${drug.ref.after}`) : null,
-    h('div', { className: 'row' },
-      h('span', { className: 'value', id: `v-${id}` }),
+  return h('article', { className: `drow${id === sheetFocus ? ' on' : ''}`, id: `d-${id}` },
+    h('div', { className: 'dhead' },
+      h('h3', {}, drug.name),
+      drug.status === 'estimated' ? h('span', { className: 'badge' }, '概算') : null,
       h('span', { className: 'phase', id: `p-${id}` })),
-    h('div', { className: 'muted', id: `r-${id}` }),
-    h('details', {},
+    h('div', { className: 'dval' },
+      h('span', { className: 'value', id: `v-${id}` }),
+      h('span', { className: 'muted', id: `r-${id}` })),
+    h('div', { className: 'muted', id: `m-${id}` }),
+    drug.ref ? h('div', { className: 'muted full' }, `体感の目安: 発現 ${drug.ref.onset} / 持続 ${drug.ref.duration} / 余韻 ${drug.ref.after}`) : null,
+    h('details', { className: 'full' },
       h('summary', {}, '詳細と出典'),
       h('div', {}, `半減期 ${drug.central.halfLifeH ?? '非線形'} h / 個人差の幅 ±${Math.round((drug.cv ?? 0) * 100)}%`),
       h('div', {}, `補正に使える項目: ${(drug.covariates ?? []).map((c) => c.on).join(', ') || 'なし'}`),
@@ -205,19 +418,21 @@ function drugCard(id) {
 
 function renderHome() {
   const ids = Object.keys(results);
-  if (!ids.length) {
-    return [h('div', { className: 'card muted' }, db.drugs.length
-      ? '記録はまだありません。'
-      : '検証済みの物質がまだありません。出典を確認したデータから順に表示されます。')];
-  }
-  const legend = h('div', { className: 'legend' }, ids.map((id, i) => h('span', {},
-    h('span', { className: 'swatch', style: `border-top-color:${COLORS[i % COLORS.length]};border-top-style:${i % DASHES.length ? 'dashed' : 'solid'}` }), nameOf(id))));
-  return [
-    h('div', { className: 'card' },
-      h('canvas', { id: 'chart', role: 'img', 'aria-label': `過去${WINDOW_H}時間から未来${WINDOW_H}時間の濃度の推移。縦軸は各物質のピークを100%とした割合。` }),
-      legend),
-    ids.map(drugCard),
-  ];
+  const blocked = !op.allowed('dose:add', lockState, Date.now(), data.settings);
+  const chips = ids.map((id, i) => h('button', { className: 'chip', type: 'button', 'aria-label': `${nameOf(id)}の詳細を開く`, onclick: (e) => openSheet('detail', e.currentTarget, id) },
+    h('span', { className: 'swatch', style: `border-top-color:${COLORS[i % COLORS.length]};border-top-style:${SWATCH[i % SWATCH.length]}` }), nameOf(id)));
+  return [h('div', { className: 'home' },
+    ids.length
+      ? h('section', { className: 'glass chartcard', 'aria-label': '濃度タイムライン' },
+        h('div', { className: 'plot' },
+          h('canvas', { id: 'chart', role: 'img', 'aria-label': `過去${WINDOW_H}時間から未来${WINDOW_H}時間の濃度の推移。縦軸は各物質のピークを100%とした割合。` })),
+        h('div', { className: 'chips' }, chips,
+          h('button', { className: 'detailrow', type: 'button', onclick: (e) => openSheet('detail', e.currentTarget) }, h('span', {}, '成分ごとの詳細'), icon('chevron', 18))))
+      : h('div', { className: 'glass chartcard empty muted' }, db.drugs.length
+        ? '記録はまだありません。'
+        : '検証済みの物質がまだありません。出典を確認したデータから順に表示されます。'),
+    h('button', { className: 'rec', type: 'button', disabled: blocked, onclick: () => dispatch('nav', () => go('log')) },
+      icon(blocked ? 'lock' : 'plus', 24), blocked ? '記録(操作ロック中は停止)' : '記録'))];
 }
 
 function tickHome() {
@@ -228,7 +443,8 @@ function tickHome() {
     const pct = (arr) => (r.peak ? (valueAt(r.t, arr, now) / r.peak) * 100 : 0);
     v.textContent = `${pct(r.ce).toFixed(1)}%`;
     $(`p-${id}`).textContent = PHASE[phaseAt(r, now)];
-    $(`r-${id}`).textContent = `範囲 ${pct(r.low).toFixed(0)}-${pct(r.high).toFixed(0)}% / 血中 約${valueAt(r.t, r.c, now).toFixed(2)} mg/L`;
+    $(`r-${id}`).textContent = `範囲 ${pct(r.low).toFixed(0)}-${pct(r.high).toFixed(0)}%`;
+    $(`m-${id}`).textContent = `血中 約${valueAt(r.t, r.c, now).toFixed(2)} mg/L`;
   }
   drawChart(now);
 }
@@ -248,25 +464,40 @@ function drawChart(now) {
   const from = now - WINDOW_H * H, to = now + WINDOW_H * H;
   const entries = Object.values(results);
   const yMax = Math.max(1.1, ...entries.map((r) => Math.max(...r.high) / (r.peak || 1)));
-  const pad = 16;
-  const x = (t) => ((t - from) / (to - from)) * w;
-  const y = (v) => ht - pad - (v / yMax) * (ht - pad * 2);
+  const [L, R, T, B] = [34, 10, 22, 24];
+  const x = (t) => L + ((t - from) / (to - from)) * (w - L - R);
+  const y = (v) => ht - B - (v / yMax) * (ht - T - B);
+  const label = (text, px, py, align = 'left') => {
+    c.textAlign = align;
+    c.fillText(text, px, py);
+  };
 
+  c.fillStyle = 'rgba(255,255,255,.05)';
+  c.fillRect(x(now), T, w - R - x(now), ht - T - B);
   c.fillStyle = muted;
-  c.font = '12px system-ui';
-  c.fillText('100%', 4, y(1) - 3);
+  c.font = '11.5px system-ui';
   c.strokeStyle = style.getPropertyValue('--line');
-  c.beginPath();
-  c.moveTo(0, y(1));
-  c.lineTo(w, y(1));
-  c.stroke();
+  c.lineWidth = 1;
+  for (const v of [0, 0.5, 1]) {
+    c.beginPath();
+    c.moveTo(L, y(v));
+    c.lineTo(w - R, y(v));
+    c.stroke();
+    label(`${v * 100}%`, L - 5, y(v) + 4, 'right');
+  }
+  for (let t = -WINDOW_H; t <= WINDOW_H; t += 3) {
+    if (t) label(`${t > 0 ? '+' : '−'}${Math.abs(t)}h`, t === WINDOW_H ? w - 2 : x(now + t * H), ht - 6, t === WINDOW_H ? 'right' : 'center');
+  }
+  label('ピーク比 %・帯は不確実性', 2, 11);
+  label('これまで', L + 4, T + 13);
+  label('これから(予測)', w - R - 4, T + 13, 'right');
 
   entries.forEach((r, i) => {
     const color = COLORS[i % COLORS.length];
     const idx = r.t.flatMap((t, k) => (t >= from && t <= to ? [k] : []));
     if (!idx.length) return;
     c.fillStyle = color;
-    c.globalAlpha = 0.15;
+    c.globalAlpha = 0.16;
     c.beginPath();
     idx.forEach((k) => c.lineTo(x(r.t[k]), y(r.high[k] / r.peak)));
     [...idx].reverse().forEach((k) => c.lineTo(x(r.t[k]), y(r.low[k] / r.peak)));
@@ -274,22 +505,32 @@ function drawChart(now) {
     c.fill();
     c.globalAlpha = 1;
     c.strokeStyle = color;
-    c.lineWidth = 2;
+    c.lineWidth = 2.6;
     c.setLineDash(DASHES[i % DASHES.length]);
     c.beginPath();
     idx.forEach((k) => c.lineTo(x(r.t[k]), y(r.ce[k] / r.peak)));
     c.stroke();
     c.setLineDash([]);
-    c.lineWidth = 1;
   });
 
   c.strokeStyle = style.getPropertyValue('--text');
+  c.lineWidth = 1.8;
   c.beginPath();
-  c.moveTo(x(now), 0);
-  c.lineTo(x(now), ht);
+  c.moveTo(x(now), T - 6);
+  c.lineTo(x(now), ht - B);
   c.stroke();
-  c.fillStyle = muted;
-  c.fillText('今', x(now) + 4, 12);
+  c.fillStyle = style.getPropertyValue('--text');
+  c.font = '700 13px system-ui';
+  label('今', x(now), ht - 6, 'center');
+  entries.forEach((r, i) => {
+    c.beginPath();
+    c.arc(x(now), y(valueAt(r.t, r.ce, now) / (r.peak || 1)), 4.5, 0, 2 * Math.PI);
+    c.fillStyle = style.getPropertyValue('--bg');
+    c.fill();
+    c.strokeStyle = COLORS[i % COLORS.length];
+    c.lineWidth = 2.4;
+    c.stroke();
+  });
 }
 
 // ---- log ----
@@ -336,6 +577,7 @@ function renderLog() {
       return;
     }
     const entry = { itemId: item.value, route: route.value, takenAt: takenAt.toISOString(), amount: { min: lo, max: hi } };
+    const back = editing ? 'history' : 'home';
     if (editing) {
       const id = editing.id;
       await commit('dose:edit', () => { Object.assign(data.doses.find((d) => d.id === id), entry); editing = null; });
@@ -343,6 +585,7 @@ function renderLog() {
       await addDose(entry);
     }
     toast('記録しました');
+    go(back);
   };
   const last = data.doses.at(-1);
   return [
@@ -355,7 +598,7 @@ function renderLog() {
           h('label', { className: 'grow' }, '最大(不確かなとき)', max)),
         h('label', {}, '時刻', when),
         h('button', { className: 'primary', type: 'submit' }, editing ? '更新' : '記録する'))),
-    last && !editing ? h('button', { disabled: blocked, onclick: () => addDose({ ...last, id: undefined, takenAt: new Date().toISOString() }).then(() => toast('記録しました')) },
+    last && !editing ? h('button', { disabled: blocked, onclick: () => addDose({ ...last, id: undefined, takenAt: new Date().toISOString() }).then(() => { toast('記録しました'); go('home'); }) },
       `直前と同じ内容を今記録(${nameOf(last.itemId)} ${last.amount.min})`) : null,
   ];
 }
@@ -473,6 +716,7 @@ function renderHelp() {
 const VIEWS = { home: renderHome, log: renderLog, history: renderHistory, profile: renderProfile, settings: renderSettings, help: renderHelp };
 
 function go(next) {
+  closeSheet();
   if (next !== 'log') editing = null;
   tab = next;
   render();
@@ -482,8 +726,10 @@ function render() {
   if (!data) return;
   $('nav').replaceChildren(...Object.entries(TABS).map(([id, label]) =>
     h('button', { 'aria-current': id === tab ? 'page' : 'false', onclick: () => dispatch('nav', () => go(id)) }, label)));
+  $('actions').hidden = false;
   $('view').replaceChildren(...VIEWS[tab]().flat());
-  renderBanner();
+  renderAlerts();
+  if (sheetOpen) fillSheet();
   if (tab === 'home') tickHome();
 }
 
@@ -496,9 +742,10 @@ function lockVault() {
 }
 
 function showVault() {
-  bannerKey = null;
+  clearToasts();
+  resetSheet();
   lockKey = '';
-  $('banner').replaceChildren();
+  $('actions').hidden = true;
   $('lock').replaceChildren();
   $('nav').replaceChildren();
   const exists = store.hasVault();
@@ -538,7 +785,7 @@ function tick() {
   const now = Date.now();
   if (now - lastSim > RESIMULATE_MS) recompute();
   renderLock();
-  renderBanner();
+  renderAlerts();
   if (tab === 'home') tickHome();
 }
 
@@ -551,6 +798,35 @@ document.addEventListener('visibilitychange', () => {
   else if (data) { recompute(); tick(); }
   hiddenAt = null;
 });
+
+dragY($('alertCard'), '#alertCard', {
+  onStart: () => toastY.stop(),
+  onMove: (dy) => toastY.set(dy > 0 ? rubberband(dy, $('alertCard').offsetHeight) : dy),
+  onEnd: (v, cancel) => {
+    if (!cancel && toastY.x + project(v) < -$('alertCard').offsetHeight * 0.5) dismissToast(shownKey, v, Math.abs(v) > 300 ? 0.8 : 1);
+    else toastY.to(0, { v, z: Math.abs(v) > 300 ? 0.8 : 1 });
+  },
+});
+
+let dragFrom = 1;
+dragY($('sheet'), '.grab', {
+  onStart: () => { sheetP.stop(); dragFrom = sheetP.x; },
+  onMove: (dy) => {
+    const span = $('sheet').offsetHeight, p = dragFrom - dy / span;
+    sheetP.set(p > 1 ? 1 + rubberband((p - 1) * span, span) / span : p);
+  },
+  onEnd: (v, cancel) => {
+    const span = $('sheet').offsetHeight, vp = -v / span, z = Math.abs(v) > 300 ? 0.8 : 1;
+    if (!cancel && sheetP.x + project(vp) < 0.5) closeSheet(vp, z);
+    else sheetP.to(1, { v: vp, z });
+  },
+});
+
+$('bell').addEventListener('click', (e) => openSheet('warn', e.currentTarget));
+$('sos').addEventListener('click', (e) => openSheet('warn', e.currentTarget));
+$('alertFold').addEventListener('click', (e) => openSheet('warn', e.currentTarget));
+$('scrim').addEventListener('click', () => closeSheet());
+addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet(); });
 
 await loadDb();
 showVault();
