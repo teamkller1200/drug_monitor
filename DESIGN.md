@@ -24,7 +24,9 @@ drug_monitor/
 依存の向き: `app → (pk, interactions, store)`。`pk` と `interactions` は DOM に触れない。
 
 ## 2. データモデル
-全データに `source`(URLまたは文献)と `status: "draft" | "verified"` を必須とする。`status` が `verified` でないものはUIに出さない(開発モードでのみ表示)。`data.test.js` が欠落を検出する。
+全データに `source`(URLまたは文献)と `status: "draft" | "estimated" | "verified"` を必須とする。`draft` はUIに出さない(開発モードでのみ表示)。`estimated` は「概算」と表示し、`note` に理由を書く。`data.test.js` が欠落を検出する。
+
+線形モデルが過量時に消失を速く見積もる物質(DXM)には `presentAtLeastH` を設定し、摂取からその時間は存在判定を保って警告が早く切れないようにする。
 
 ```jsonc
 // drugs.json

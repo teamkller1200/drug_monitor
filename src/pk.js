@@ -153,19 +153,25 @@ function runBands(drug, doses, profile, range) {
   const high = simulateDrug(drug, doses, profile, { ...range, pick: 'max', scale: 1 / (1 + cv) });
   const peak = Math.max(...mid.ce, 0);
   const peakAt = mid.t[mid.ce.indexOf(peak)];
-  return { ...mid, low: low.ce, high: high.ce, peak, doseTimes: doses.map((d) => d.takenAt), toPeakMs: peakAt - mid.t[0] };
+  return {
+    ...mid, low: low.ce, high: high.ce, peak,
+    doseTimes: doses.map((d) => d.takenAt),
+    toPeakMs: peakAt - mid.t[0],
+    holdMs: (drug.presentAtLeastH ?? 0) * H,
+  };
 }
 
-// Taken but still absorbing: the level looks low, yet the substance is on its way in.
-function absorbing(result, at) {
-  return result.doseTimes.some((t) => at >= t && at - t <= result.toPeakMs);
-}
+const takenWithin = (result, at, ms) => result.doseTimes.some((t) => at >= t && at - t <= ms);
+// Still on its way in: the level looks low, yet warnings must not lapse.
+const absorbing = (result, at) => takenWithin(result, at, result.toPeakMs);
+// The model is known to clear this drug too early, e.g. saturable metabolism after a large dose.
+const held = (result, at) => takenWithin(result, at, result.holdMs);
 
 export function simulate(doses, drugs, profile, { now, horizonH = 24, pkMods = null }) {
   const out = {};
   const to = now + horizonH * H;
   for (const drug of drugs) {
-    const cutoff = now - 10 * slowestHalfLifeH(drug) * H;
+    const cutoff = now - Math.max(10 * slowestHalfLifeH(drug), drug.presentAtLeastH ?? 0) * H;
     const own = doses.filter((d) => d.drugId === drug.id && d.takenAt >= cutoff);
     if (!own.length) continue;
     const from = Math.min(...own.map((d) => d.takenAt));
@@ -177,7 +183,7 @@ export function simulate(doses, drugs, profile, { now, horizonH = 24, pkMods = n
 // Relative to the drug's own simulated peak, so a small dose still counts as present (errs towards warning).
 export function isPresent(result, at) {
   if (!result || result.peak <= 0 || at < result.t[0]) return false;
-  return absorbing(result, at) || valueAt(result.t, result.ce, at) >= result.peak * PRESENT_RATIO;
+  return absorbing(result, at) || held(result, at) || valueAt(result.t, result.ce, at) >= result.peak * PRESENT_RATIO;
 }
 
 export function phaseAt(result, at) {
@@ -186,5 +192,5 @@ export function phaseAt(result, at) {
   const rising = valueAt(result.t, result.ce, at + 300e3) > v;
   if (v >= result.peak * PEAK_RATIO) return 'peak';
   if (rising || absorbing(result, at)) return 'onset';
-  return v >= result.peak * PRESENT_RATIO ? 'comedown' : 'gone';
+  return v >= result.peak * PRESENT_RATIO || held(result, at) ? 'comedown' : 'gone';
 }

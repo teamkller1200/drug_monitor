@@ -54,7 +54,7 @@ function toast(message) {
   setTimeout(() => { if ($('toast').textContent === message) $('toast').textContent = ''; }, 4000);
 }
 
-const usable = (e) => !VERIFIED_ONLY || e.status === 'verified';
+const usable = (e) => !VERIFIED_ONLY || e.status !== 'draft';
 const drugById = (id) => db.drugs.find((d) => d.id === id);
 const nameOf = (id) => drugById(id)?.name ?? db.products.find((p) => p.id === id)?.name ?? id;
 
@@ -177,7 +177,9 @@ function renderBanner() {
       h('small', {}, `出典: ${a.source}`),
       a.severity === 'fatal' ? h('small', {}, 'つらい症状があれば ', h('a', { href: 'tel:119' }, '119に電話'), ' / ',
         h('a', { href: 'tel:072-727-2499' }, '中毒110番')) : null)),
-    ...unknown.map(([a, b]) => h('div', { className: 'card muted' }, `${nameOf(a)} + ${nameOf(b)}: データなし(安全という意味ではありません)`)),
+    unknown.length ? h('details', { className: 'card' },
+      h('summary', {}, `データなしの組み合わせ ${unknown.length}件(安全という意味ではありません)`),
+      unknown.map(([a, b]) => h('div', {}, `${nameOf(a)} + ${nameOf(b)}`))) : '',
   );
 }
 
@@ -185,7 +187,8 @@ function renderBanner() {
 function drugCard(id) {
   const drug = drugById(id);
   return h('div', { className: 'card' },
-    h('div', {}, drug.name),
+    h('div', {}, drug.name, drug.status === 'estimated' ? h('span', { className: 'badge' }, '概算') : null),
+    drug.ref ? h('div', { className: 'muted' }, `体感の目安: 発現 ${drug.ref.onset} / 持続 ${drug.ref.duration} / 余韻 ${drug.ref.after}`) : null,
     h('div', { className: 'row' },
       h('span', { className: 'value', id: `v-${id}` }),
       h('span', { className: 'phase', id: `p-${id}` })),
@@ -196,6 +199,7 @@ function drugCard(id) {
       h('div', {}, `補正に使える項目: ${(drug.covariates ?? []).map((c) => c.on).join(', ') || 'なし'}`),
       drug.note ? h('div', {}, drug.note) : null,
       h('div', {}, `出典: ${drug.source}`),
+      drug.ref ? h('div', {}, '体感の目安の出典: TripSit') : null,
       h('div', {}, '線形モデルの推定です。実際の値から大きく外れることがあります。')));
 }
 
@@ -382,7 +386,7 @@ function renderProfile() {
   };
   const wt = num('wt', p.weightKg), age = num('age', p.age), egfr = num('egfr', p.egfr);
   const sex = sel('sex', p.sex, { '': '未入力', male: '男性', female: '女性' });
-  const cyp = sel('cyp', p.cyp2d6, { '': '不明', low: '低下', normal: '通常' });
+  const cyp = sel('cyp', p.cyp2d6, { '': '不明', normal: '通常', low: '低下', poor: '欠損' });
   const smoker = h('input', { id: 'smoker', type: 'checkbox', checked: !!p.smoker });
   const submit = (e) => {
     e.preventDefault();

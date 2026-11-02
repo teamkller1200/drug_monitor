@@ -4,6 +4,7 @@
     "routes": { "oral": { "F": 0.84, "ka": 1.9 } },
     "central": { "halfLifeH": 2.9, "VdLperKg": 3.2 }, "cv": 0.4,
     "classes": ["opioid", "cyp2d6_substrate"],
+    "ref": { "onset": "30-45分", "duration": "3-6時間", "after": "1-12時間" },
     "note": "親化合物のみ。効果の本体であるモルヒネの曲線はVdの出典がないため未対応。kaはTmax 1-1.5hから算出。cvは一律の仮定。",
     "source": "F: PAGE abstract (Ashraf) https://www.page-meeting.org/Abstracts/a-population-pharmacokinetic-model-to-quantify-the-role-of-in-vivo-cyp2d6-activity-in-codeine-metabolism-for-model-informed-precision-dosing-in-ambulatory-surgical-patients/ / t1/2, Vd: Tuxarin label https://medlibrary.org/lib/rx/meds/tuxarin/page/8/",
     "status": "verified"
@@ -13,6 +14,7 @@
     "routes": { "oral": { "F": 0.75, "ka": 1.89 } },
     "central": { "halfLifeH": 6.3, "VdLperKg": 2.7 }, "cv": 0.4,
     "classes": ["cyp2d6_substrate"],
+    "ref": { "onset": "1時間", "duration": "5-7時間", "after": "1-12時間" },
     "note": "親化合物のみ。活性代謝物M1は生成割合とVdの出典がないため未対応。米国添付文書の値で日本人データではない。kaはTmax 1.6hから算出。cvは一律の仮定。",
     "source": "米国添付文書の転載 https://medlibrary.org/lib/rx/meds/tramadol-hcl/",
     "status": "verified"
@@ -22,6 +24,7 @@
     "routes": { "oral": { "F": 0.7, "ka": 1.19 } },
     "central": { "halfLifeH": 2.5, "VdLperKg": 0.54 }, "cv": 0.4,
     "classes": ["benzodiazepine"],
+    "ref": { "onset": "15-45分", "duration": "5-10時間", "after": "1-24時間" },
     "note": "ベンゾジアゼピン系ではないが、同じGABA-A作動薬なので相互作用では同じ分類として扱う(本プロジェクトの判断)。kaはTmax 1.6hから算出。cvは一律の仮定。",
     "source": "米国添付文書の転載 https://medlibrary.org/lib/rx/meds/zolpidem-tartrate-84/page/5/ / Vd: https://drugmap.idrblab.net/data/drug/details/DMWOSKJ",
     "status": "verified"
@@ -31,6 +34,7 @@
     "routes": { "oral": { "F": 0.72, "ka": 0.96 } },
     "central": { "halfLifeH": 5.9, "VdLperKg": 5 }, "cv": 0.5,
     "classes": ["sedating_antihistamine"],
+    "ref": { "onset": "60-120分", "duration": "6-8時間", "after": "1-12時間" },
     "note": "文献の範囲が広い(t1/2 2.4-9.3h、Vd 3.3-6.8 L/kg)ため中央値を採用。主に二次資料。kaはTmax 2-3hから算出。cvは一律の仮定。",
     "source": "https://jphcs.biomedcentral.com/articles/10.1186/s40780-021-00215-w/tables/4 / https://www.rxreasoner.com/substances/diphenhydramine/pharmacology",
     "status": "verified"
@@ -40,6 +44,7 @@
     "routes": { "oral": { "F": 1, "ka": 4 } },
     "central": { "VdLperKg": 0.62, "vmaxMgPerH": 7812 }, "cv": 0.3,
     "classes": [],
+    "ref": { "onset": "15-30分", "duration": "1.5-3時間", "after": "6-48時間" },
     "note": "吸収の速さ(ka 4/h)は仮定で文献値ではない。実際は食事で大きく変わる。F 1 は Widmark 式と同じ前提。Vdは Widmark 0.68/0.55 の中間、消失は 0.018 g/dL/h から算出。性別の補正は未対応。",
     "source": "https://www.nist.gov/file/383406",
     "status": "verified"
@@ -49,6 +54,7 @@
     "routes": { "oral": { "F": 1, "ka": 3.31 } },
     "central": { "halfLifeH": 5, "VdLperKg": 0.67 }, "cv": 0.4,
     "classes": [],
+    "ref": { "onset": "5-10分", "duration": "1.5-5時間", "after": "3-4時間" },
     "note": "Tmax 1h は仮定で文献値ではない。t1/2 は成人の範囲 2-8h の中間で、個人差が大きい。喫煙の補正は数値の出典がないため未対応。",
     "source": "EFSA https://efsa.europa.eu/sites/default/files/event/documentset/150305-p09.pdf",
     "status": "verified"
@@ -58,70 +64,79 @@
     "routes": { "oral": { "F": 0.9, "ka": 4.63 } },
     "central": { "halfLifeH": 48, "VdLperKg": 0.9 },
     "cv": 0.4, "classes": ["benzodiazepine"],
+    "ref": { "onset": "30-90分", "duration": "10-24時間", "after": "1-120時間" },
     "note": "親化合物のみ。活性代謝物デスメチルジアゼパム(t1/2 最大100h)は生成割合の出典がないため未対応で、実際の作用はこの曲線より長く残り得る。Tmax 1.25h は仮定で文献値ではない。",
     "source": "FDA Valium label https://www.accessdata.fda.gov/drugsatfda_docs/label/2023/013263s097lbl.pdf",
     "status": "verified"
   },
   {
-    "id": "etizolam", "name": "エチゾラム", "elimination": "linear",
-    "routes": { "oral": { "F": 1, "ka": 2.84 } },
-    "central": { "halfLifeH": 3.4, "VdLperKg": 1 }, "cv": 0.5,
+    "id": "brotizolam", "name": "ブロチゾラム", "elimination": "linear",
+    "routes": { "oral": { "F": 0.7, "ka": 3.28 } },
+    "central": { "halfLifeH": 7, "VdLperKg": 0.66 }, "cv": 0.4,
     "classes": ["benzodiazepine"],
-    "note": "未取得: Vd(仮値)、F(仮値)。t1/2 は報告により 3.4-14.8h と差が大きい。活性代謝物 α-ヒドロキシエチゾラムも未対応。添付文書16項を要確認。",
-    "source": "Fracasso 1991 (PMID 2065698) https://go.drugbank.com/articles/A19776",
-    "status": "draft"
+    "ref": { "onset": "10-30分", "duration": "4-8時間", "after": "1-4時間" },
+    "note": "F、Vd、Tmax 1.1h は健康成人の1983年の小規模試験。kaはTmaxから算出。cvは一律の仮定。",
+    "source": "https://pmc.ncbi.nlm.nih.gov/articles/PMC1428219 / https://www.bps.ac.uk/publishing/our-journals/british-journal-of-clinical-pharmacology/volume-16/issue-s2-(2)/pharmacokinetics-of-brotizolam-in-healthy-subjects / t1/2: https://www.pmda.go.jp/PmdaSearch/iyakuDetail/GeneralList/1124009",
+    "status": "verified"
   },
   {
-    "id": "brotizolam", "name": "ブロチゾラム", "elimination": "linear",
-    "routes": { "oral": { "F": 1, "ka": 2.76 } },
-    "central": { "halfLifeH": 7, "VdLperKg": 1 }, "cv": 0.4,
+    "id": "etizolam", "name": "エチゾラム", "elimination": "linear",
+    "routes": { "oral": { "F": 0.93, "ka": 3.43 } },
+    "central": { "halfLifeH": 5.5, "VdLperKg": 1 }, "cv": 0.5,
     "classes": ["benzodiazepine"],
-    "note": "未取得: Vd(仮値)、F(仮値)。Tmax 1-1.5h、t1/2 約7h は添付文書転載より。",
-    "source": "https://www.pmda.go.jp/PmdaSearch/iyakuDetail/GeneralList/1124009",
-    "status": "draft"
+    "ref": { "onset": "10-40分", "duration": "5-8時間", "after": "6-24時間" },
+    "note": "概算。Vd 1 L/kg は仮値。Fは出典の弱い値。t1/2 は報告により 3.4-14.8h と差が大きく、0.5mgの試験値を採用。活性代謝物も未対応。",
+    "source": "t1/2, Tmax: デパス錠0.5mg 同等性試験 https://clinicalsup.jp/jpoc/drugdetails.aspx?code=65384 / https://go.drugbank.com/articles/A19776 / F: https://en.wikipedia.org/wiki/Etizolam",
+    "status": "estimated"
   },
   {
     "id": "dextromethorphan", "name": "デキストロメトルファン (DXM)", "elimination": "linear",
-    "routes": { "oral": { "F": 1, "ka": 1 } },
+    "routes": { "oral": { "F": 1, "ka": 0.42 } },
     "central": { "halfLifeH": 2.4, "VdLperKg": 5.5 }, "cv": 0.5,
+    "covariates": [{ "on": "cyp2d6", "when": "poor", "mult": { "cl": 0.126 } }],
     "classes": ["cyp2d6_substrate"],
-    "note": "収録不可の理由: 高用量で代謝が飽和するがVmax/Km未取得で、線形モデルは過量時に大きく外れる。CYP2D6欠損型では t1/2 19.1h。F(仮値)、人のka(仮値)も未取得。活性代謝物デキストロルファンも未対応。",
-    "source": "https://pubmed.ncbi.nlm.nih.gov/7593709",
-    "status": "draft"
+    "presentAtLeastH": 48,
+    "ref": { "onset": "20-60分", "duration": "6-8時間", "after": "1-12時間" },
+    "note": "概算。過量時の飽和は反映しておらず、大量摂取では曲線より長く残る(過量症例では2日後も血中に残存)。そのため摂取から48時間は体内にあるものとして警告を続ける。Fは仮値で、mg/Lの表示は参考にならない。活性代謝物デキストロルファンも未対応。",
+    "source": "t1/2、CYP2D6: https://pubmed.ncbi.nlm.nih.gov/7593709 / Tmax、Vd: https://www.drugbank.ca/r/DB00514 / 過量症例: https://pmc.ncbi.nlm.nih.gov/articles/PMC11918451/",
+    "status": "estimated"
   },
   {
     "id": "dihydrocodeine", "name": "ジヒドロコデイン", "elimination": "linear",
-    "routes": { "oral": { "F": 0.21, "ka": 2 } },
+    "routes": { "oral": { "F": 0.21, "ka": 1.4 } },
     "central": { "halfLifeH": 4, "VdLperKg": 1 }, "cv": 0.4,
     "classes": ["opioid", "cyp2d6_substrate"],
-    "note": "未取得: Vd(仮値)、Tmax(ka 仮値)。F 21%、t1/2 3.3-4.5h は Rowell 1983。",
-    "source": "Rowell 1983 https://link.springer.com/article/10.1007/BF01037958",
-    "status": "draft"
+    "ref": { "onset": "30-45分", "duration": "3-4時間", "after": "1-8時間" },
+    "note": "概算。Vd は二次データベースの1件のみ。Fの範囲は 12-34%。Tmax 1.7h は DrugBank の値。",
+    "source": "F、t1/2: Rowell 1983 https://link.springer.com/article/10.1007/BF01037958 / Tmax: https://www.drugbank.ca/r/DB01551 / Vd: https://cadd.zju.edu.cn/pkkb/compound/detail/734",
+    "status": "estimated"
   },
   {
     "id": "chlorpheniramine", "name": "クロルフェニラミン", "elimination": "linear",
-    "routes": { "oral": { "F": 0.4, "ka": 1 } },
+    "routes": { "oral": { "F": 0.4, "ka": 1.34 } },
     "central": { "halfLifeH": 20, "VdLperKg": 3.4 }, "cv": 0.5,
     "classes": ["sedating_antihistamine"],
-    "note": "未取得: Tmax(ka 仮値)。Vd は抄録の表記が崩れていて原文確認が必要(仮値)。",
-    "source": "https://pubmed.ncbi.nlm.nih.gov/6383755",
-    "status": "draft"
+    "note": "概算。Vd は2例の静注試験の抄録で、表記が崩れていて原文未確認。Tmax 2.8h は空腹時の試験値。体感の目安は出典なし。",
+    "source": "https://ilse.kobv.de/KobvIndexRecord/nat_lic_papers_NLM202437140 / https://pubmed.ncbi.nlm.nih.gov/6383755",
+    "status": "estimated"
   },
   {
     "id": "methylephedrine", "name": "メチルエフェドリン", "elimination": "linear",
-    "routes": { "oral": { "F": 1, "ka": 1 } },
-    "central": { "halfLifeH": 5, "VdLperKg": 3 }, "cv": 0.5,
+    "routes": { "oral": { "F": 0.88, "ka": 1.56 } },
+    "central": { "halfLifeH": 6, "VdLperKg": 3 }, "cv": 0.5,
     "classes": [],
-    "note": "未取得: 人の t1/2、Vd、F、Tmax がすべて仮値。公開資料で見つからず。",
-    "source": "未確認", "status": "draft"
+    "ref": { "onset": "5-20分", "duration": "3時間", "after": "1-8時間" },
+    "note": "概算。人のデータが見つからず、構造が近いエフェドリンの値を代用している(本プロジェクトの判断)。Vd は 215.6 L を 70kg で換算。",
+    "source": "エフェドリンの値: https://pmc.ncbi.nlm.nih.gov/articles/PMC1884497 / https://pharmaoffer.com/api-excipient-supplier/adrenergic-agents/ephedrine",
+    "status": "estimated"
   },
   {
     "id": "acetaminophen", "name": "アセトアミノフェン", "elimination": "linear",
-    "routes": { "oral": { "F": 1, "ka": 3 } },
-    "central": { "halfLifeH": 2, "VdLperKg": 0.5 }, "cv": 0.4,
+    "routes": { "oral": { "F": 0.8, "ka": 6.1 } },
+    "central": { "halfLifeH": 2, "VdLperKg": 0.9 }, "cv": 0.4,
     "classes": [],
-    "note": "未取得: Tmax(ka 仮値)、F(仮値)。t1/2 1.25-3h、V 30.9 L は小規模試験。過量時は半減期が延びる。",
-    "source": "https://medlibrary.org/lib/rx/meds/acetaminophen-and-codeine/page/2/",
-    "status": "draft"
+    "note": "概算。肝障害は服用から2-3日遅れて現れることがあり、この曲線が下がっていても肝臓が無事とは限らない。過量時は半減期が延びる。kaは吸収半減期 6.8 分から算出。体感の目安は出典なし。",
+    "source": "https://www.ema.europa.eu/en/documents/mrl-report/paracetamol-summary-report-committee-veterinary-medicinal-products_en.pdf / https://medlibrary.org/lib/rx/meds/acetaminophen/page/4/",
+    "status": "estimated"
   }
 ]

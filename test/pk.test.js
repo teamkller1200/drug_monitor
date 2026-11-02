@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { expandDoses, simulate, simulateDrug, valueAt, phaseAt } from '../src/pk.js';
+import { expandDoses, simulate, simulateDrug, valueAt, phaseAt, isPresent } from '../src/pk.js';
 
 const H = 3600e3;
 const T0 = Date.UTC(2026, 0, 1);
@@ -106,6 +106,19 @@ test('phases move from onset through peak to comedown and gone', () => {
   assert.equal(phaseAt(r, peakAt + 8 * H), 'comedown');
   assert.equal(phaseAt(r, peakAt + 60 * H), 'gone');
   assert.equal(phaseAt(r, T0 - H), 'none');
+});
+
+test('presentAtLeastH keeps a fast-clearing drug present and out of the gone phase', () => {
+  const d = { ...drug, central: { halfLifeH: 1, VdLperKg: 1 } };
+  const profile = { weightKg: 70 };
+  const at = T0 + 30 * H;
+  const plain = simulate([dose(100)], [d], profile, { now: T0, horizonH: 48 }).x;
+  const held = simulate([dose(100)], [{ ...d, presentAtLeastH: 48 }], profile, { now: T0, horizonH: 60 }).x;
+  assert.equal(isPresent(plain, at), false);
+  assert.equal(isPresent(held, at), true);
+  assert.equal(phaseAt(held, at), 'comedown');
+  assert.equal(isPresent(held, T0 + 49 * H), false);
+  assert.ok(simulate([dose(100)], [{ ...d, presentAtLeastH: 48 }], profile, { now: at }).x);
 });
 
 test('doses older than ten half-lives are dropped', () => {
