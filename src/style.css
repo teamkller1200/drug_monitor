@@ -74,7 +74,9 @@ fieldset { border: 0; margin: 0; padding: 0; }
 .home { display: flex; flex-direction: column; gap: 8px; min-height: 100%; }
 .chartcard { flex: 1; display: flex; flex-direction: column; padding: 6px; border-radius: 28px; }
 .chartcard.empty { justify-content: center; padding: 24px; text-align: center; }
-.plot { position: relative; flex: 1; min-height: 200px; }
+/* 横軸は表示幅の2倍で描き、横スクロールで残りを見る */
+.plot { position: relative; flex: 1; min-height: 200px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.plot canvas { width: 200%; height: calc(100% - 6px); }
 canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
 .chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 8px; padding-top: 6px; }
 .chip { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 0 10px; border: 0; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28), inset 0 -1px 0 rgba(255, 255, 255, .08); font-size: 12px; font-weight: 600; text-align: left; }

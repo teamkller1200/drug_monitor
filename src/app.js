@@ -425,7 +425,7 @@ function renderHome() {
     ids.length
       ? h('section', { className: 'glass chartcard', 'aria-label': '濃度タイムライン' },
         h('div', { className: 'plot' },
-          h('canvas', { id: 'chart', role: 'img', 'aria-label': `過去${WINDOW_H}時間から未来${WINDOW_H}時間の濃度の推移。縦軸は各物質のピークを100%とした割合。` })),
+          h('canvas', { id: 'chart', role: 'img', 'aria-label': `過去${WINDOW_H}時間から未来${WINDOW_H}時間の濃度の推移。縦軸は各物質のピークを100%とした割合。横にスクロールできます。` })),
         h('div', { className: 'chips' }, chips,
           h('button', { className: 'detailrow', type: 'button', onclick: (e) => openSheet('detail', e.currentTarget) }, h('span', {}, '成分ごとの詳細'), icon('chevron', 18))))
       : h('div', { className: 'glass chartcard empty muted' }, db.drugs.length
@@ -474,6 +474,15 @@ function drawChart(now) {
   const yMax = Math.max(1.1, ...entries.map(({ r }) => Math.max(...r.high) / (r.peak || 1)));
   const [L, R, T, B] = [34, 10, 22, 24];
   const x = (t) => L + ((t - from) / (to - from)) * (w - L - R);
+  // The canvas is twice the visible width. Open with the "now" line at the right edge,
+  // and keep the % axis pinned to the left edge of whatever part of the timeline is shown.
+  const scroller = canvas.parentElement;
+  if (scroller && !canvas.dataset.scrollBound) {
+    canvas.dataset.scrollBound = '1';
+    scroller.addEventListener('scroll', () => drawChart(Date.now()), { passive: true });
+    scroller.scrollLeft = x(now) - (scroller.clientWidth - R);
+  }
+  const sx = scroller ? scroller.scrollLeft : 0;
   const y = (v) => ht - B - (v / yMax) * (ht - T - B);
   const label = (text, px, py, align = 'left') => {
     c.textAlign = align;
@@ -491,15 +500,10 @@ function drawChart(now) {
     c.moveTo(L, y(v));
     c.lineTo(w - R, y(v));
     c.stroke();
-    label(`${v * 100}%`, L - 5, y(v) + 4, 'right');
   }
   for (let t = -WINDOW_H; t <= WINDOW_H; t += 3) {
     if (t) label(`${t > 0 ? '+' : '−'}${Math.abs(t)}h`, t === WINDOW_H ? w - 2 : x(now + t * H), ht - 6, t === WINDOW_H ? 'right' : 'center');
   }
-  label('ピーク比 %・帯は不確実性', 2, 11);
-  label('これまで', L + 4, T + 13);
-  label('これから(予測)', w - R - 4, T + 13, 'right');
-
   entries.forEach(({ r, i }) => {
     const color = COLORS[i % COLORS.length];
     const idx = r.t.flatMap((t, k) => (t >= from && t <= to ? [k] : []));
@@ -539,6 +543,15 @@ function drawChart(now) {
     c.lineWidth = 2.4;
     c.stroke();
   });
+
+  // Redraw the axis in a gutter at the current scroll offset so the % scale stays readable.
+  c.clearRect(sx, T, L, ht - T - B);
+  c.fillStyle = muted;
+  c.font = '11.5px system-ui';
+  for (const v of [0, 0.5, 1]) label(`${v * 100}%`, sx + L - 5, y(v) + 4, 'right');
+  label('ピーク比 %・帯は不確実性', sx + 2, 11);
+  label('これまで', L + 4, T + 13);
+  label('これから(予測)', w - R - 4, T + 13, 'right');
 }
 
 // ---- log ----
