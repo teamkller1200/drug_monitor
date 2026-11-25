@@ -14,39 +14,66 @@ function memory() {
 
 const dose = { id: 'a', itemId: 'secret-item', route: 'oral', takenAt: '2026-01-01T00:00:00Z', amount: { min: 1, max: 2 } };
 
-test('data round-trips and nothing readable reaches storage', async () => {
+// Builds a vault in the old encrypted layout so migration can be exercised.
+async function legacyVault(password, data) {
+  const enc = new TextEncoder();
+  const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const base = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', hash: 'SHA-256', salt, iterations: 600000 },
+    base,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt'],
+  );
+  const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify(data)));
+  return JSON.stringify({ salt: b64(salt), iv: b64(iv), data: b64(cipher), iterations: 600000 });
+}
+
+test('data round-trips without a password', async () => {
   const mem = memory();
   const s = createStore(mem);
-  await s.create('pw', { ...emptyData(), doses: [dose] });
-  assert.ok(!mem.dump().includes('secret-item'));
+  await s.create({ ...emptyData(), doses: [dose] });
   const fresh = createStore(mem);
-  assert.deepEqual((await fresh.unlock('pw')).doses, [dose]);
+  assert.equal(fresh.hasVault(), true);
+  assert.equal(fresh.hasLegacyVault(), false);
+  assert.deepEqual(fresh.read().doses, [dose]);
 });
 
-test('a wrong password is rejected and keeps the vault', async () => {
-  const mem = memory();
-  await createStore(mem).create('pw');
-  const s = createStore(mem);
-  await assert.rejects(s.unlock('nope'));
-  assert.equal(s.isUnlocked(), false);
-  assert.ok(await s.unlock('pw'));
+test('an empty store reads as default data', () => {
+  const s = createStore(memory());
+  assert.equal(s.hasVault(), false);
+  assert.deepEqual(s.read(), emptyData());
 });
 
-test('saves re-encrypt with a new iv and need the key', async () => {
+test('a legacy encrypted vault is migrated with the right password only', async () => {
+  const mem = memory();
+  mem.setItem('dm.vault', await legacyVault('pw', { ...emptyData(), doses: [dose] }));
+  const s = createStore(mem);
+  assert.equal(s.hasLegacyVault(), true);
+  assert.equal(s.hasVault(), false);
+  await assert.rejects(s.unlockLegacy('nope'));
+  assert.equal(s.hasLegacyVault(), true);
+  assert.deepEqual((await s.unlockLegacy('pw')).doses, [dose]);
+  assert.equal(s.hasLegacyVault(), false);
+  assert.deepEqual(s.read().doses, [dose]);
+  assert.ok(!mem.dump().includes('"salt"'));
+});
+
+test('saves replace the stored data', async () => {
   const mem = memory();
   const s = createStore(mem);
-  const data = await s.create('pw');
-  const before = mem.dump();
-  await s.save(data);
-  assert.notEqual(mem.dump(), before);
-  s.lock();
-  await assert.rejects(s.save(data), /locked/);
+  const data = await s.create();
+  await s.save({ ...data, profile: { weightKg: 80 } });
+  assert.equal(createStore(mem).read().profile.weightKg, 80);
 });
 
 test('wipe removes the vault and the lock flag', async () => {
   const mem = memory();
   const s = createStore(mem);
-  await s.create('pw');
+  await s.create();
   s.writeOpLock({ until: 1 });
   s.wipe();
   assert.equal(s.hasVault(), false);

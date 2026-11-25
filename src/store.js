@@ -1,12 +1,13 @@
 const VAULT = 'dm.vault';
 const OPLOCK = 'dm.oplock';
-const ITERATIONS = 600000;
+const VERSION = 2;
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
 const toB64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
 const fromB64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 
+// Only used to migrate a vault written by the old password-protected version.
 async function deriveKey(password, salt, iterations) {
   const base = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
   return crypto.subtle.deriveKey(
@@ -37,43 +38,52 @@ export function validateData(data) {
   return { settings: emptyData().settings, ...data };
 }
 
-export function createStore(storage) {
-  let key = null;
-  let salt = null;
-
-  async function save(data) {
-    if (!key) throw new Error('locked');
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const data_ = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify(data)));
-    storage.setItem(VAULT, JSON.stringify({ salt: toB64(salt), iv: toB64(iv), data: toB64(data_), iterations: ITERATIONS }));
+const parse = (raw) => {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
   }
+};
+
+export function createStore(storage) {
+  const readPlain = () => {
+    const v = parse(storage.getItem(VAULT));
+    return v && v.v === VERSION ? v.data : null;
+  };
+
+  // Old layout: { salt, iv, data, iterations } with AES-GCM ciphertext.
+  const readLegacy = () => {
+    const v = parse(storage.getItem(VAULT));
+    return v && v.v !== VERSION && typeof v.salt === 'string' ? v : null;
+  };
+
+  const save = (data) => storage.setItem(VAULT, JSON.stringify({ v: VERSION, data }));
 
   return {
-    hasVault: () => storage.getItem(VAULT) !== null,
+    hasVault: () => readPlain() !== null,
+    hasLegacyVault: () => readLegacy() !== null,
+    read: () => readPlain() ?? emptyData(),
 
-    async create(password, data = emptyData()) {
-      salt = crypto.getRandomValues(new Uint8Array(16));
-      key = await deriveKey(password, salt, ITERATIONS);
-      await save(data);
+    async create(data = emptyData()) {
+      save(data);
       return data;
     },
 
-    // A wrong password makes AES-GCM reject, and the vault is left untouched.
-    async unlock(password) {
-      const v = JSON.parse(storage.getItem(VAULT));
-      const s = fromB64(v.salt);
-      const k = await deriveKey(password, s, v.iterations);
+    // One-time migration from the password-protected version; afterwards the vault is plain.
+    async unlockLegacy(password) {
+      const v = readLegacy();
+      if (!v) throw new Error('locked');
+      const k = await deriveKey(password, fromB64(v.salt), v.iterations);
       const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(v.iv) }, k, fromB64(v.data));
-      [key, salt] = [k, s];
-      return JSON.parse(dec.decode(plain));
+      const data = validateData(JSON.parse(dec.decode(plain)));
+      save(data);
+      return data;
     },
 
     save,
-    lock() { key = null; },
-    isUnlocked: () => key !== null,
 
     wipe() {
-      key = null;
       storage.removeItem(VAULT);
       storage.removeItem(OPLOCK);
     },

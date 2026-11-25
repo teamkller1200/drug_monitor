@@ -7,7 +7,6 @@ import { Spring, dragY, project, reducedMotion, rubberband } from './motion.js';
 const H = 3600e3;
 const MIN = 60e3;
 const RESIMULATE_MS = 10 * MIN;
-const AUTO_LOCK_MS = 5 * MIN;
 const WINDOW_H = 12;
 const VERIFIED_ONLY = !new URLSearchParams(location.search).has('dev');
 
@@ -48,7 +47,6 @@ let lockKey = '';
 let alertsKey = null;
 let solo = null;
 let current = { alerts: [], unknown: [] };
-let hiddenAt = null;
 
 function h(tag, props = {}, ...children) {
   const el = document.createElement(tag);
@@ -683,7 +681,7 @@ function renderProfile() {
 // ---- settings ----
 function exportData() {
   dispatch('data:export', () => {
-    if (!confirm('エクスポートしたファイルは暗号化されません。保管場所に注意してください。続けますか?')) return;
+    if (!confirm('エクスポートしたファイルは平文です。保管場所に注意してください。続けますか?')) return;
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
     h('a', { href: url, download: `drug-monitor-${new Date().toISOString().slice(0, 10)}.json` }).click();
     URL.revokeObjectURL(url);
@@ -705,9 +703,13 @@ function wipe() {
   dispatch('data:wipe', () => {
     if (prompt('全データを削除します。元に戻せません。実行するには「削除」と入力してください') !== '削除') return;
     store.wipe();
-    data = null;
+    data = emptyData();
+    store.save(data);
     lockState = op.unlocked();
-    showVault();
+    store.writeOpLock(lockState);
+    tab = 'profile';
+    render();
+    renderLock();
   });
 }
 
@@ -727,9 +729,7 @@ function renderSettings() {
       h('div', { className: 'row' },
         h('button', { onclick: exportData }, 'エクスポート'),
         h('label', {}, 'インポート', h('input', { type: 'file', accept: 'application/json', onchange: (e) => e.target.files[0] && importData(e.target.files[0]) }))),
-      h('p', { className: 'muted' }, 'パスワードを忘れるとデータは復元できません。'),
       h('button', { onclick: wipe }, '全データを削除')),
-    h('button', { onclick: lockVault }, '今すぐパスワードロック'),
   ];
 }
 
@@ -762,50 +762,49 @@ function render() {
   if (tab === 'home') tickHome();
 }
 
-function lockVault() {
-  store.lock();
-  data = null;
-  results = {};
-  doses = [];
-  showVault();
+function boot() {
+  if (store.hasLegacyVault()) {
+    showMigration();
+    return;
+  }
+  const fresh = !store.hasVault();
+  data = fresh ? emptyData() : validateData(store.read());
+  if (fresh) store.save(data);
+  recompute();
+  tab = fresh ? 'profile' : 'home';
+  render();
+  renderLock();
 }
 
-function showVault() {
+// Older versions encrypted the vault with a password. Read it once, then keep it plain.
+function showMigration() {
   clearToasts();
   resetSheet();
   lockKey = '';
   $('actions').hidden = true;
   $('lock').replaceChildren();
   $('nav').replaceChildren();
-  const exists = store.hasVault();
-  const pw = h('input', { type: 'password', autocomplete: exists ? 'current-password' : 'new-password' });
-  const pw2 = h('input', { type: 'password', autocomplete: 'new-password' });
+  const pw = h('input', { type: 'password', autocomplete: 'current-password' });
   const submit = async (e) => {
     e.preventDefault();
     try {
-      if (exists) {
-        data = validateData(await store.unlock(pw.value));
-      } else {
-        if (pw.value.length < 4 || pw.value !== pw2.value) { toast('4文字以上で、同じパスワードを2回入力してください'); return; }
-        data = await store.create(pw.value, emptyData());
-      }
+      data = validateData(await store.unlockLegacy(pw.value));
     } catch {
       toast('パスワードが違います');
       return;
     }
     recompute();
-    tab = exists ? 'home' : 'profile';
+    tab = 'home';
     render();
     renderLock();
   };
   $('view').replaceChildren(
     h('form', { className: 'card', onsubmit: submit },
-      h('label', {}, exists ? 'パスワード' : 'パスワードを設定', pw),
-      exists ? null : h('label', {}, 'もう一度入力', pw2),
-      exists ? null : h('p', { className: 'muted' }, '忘れるとデータは復元できません。'),
-      h('button', { className: 'primary', type: 'submit' }, exists ? '開く' : '作成')),
+      h('p', { className: 'muted' }, 'パスワードロックを解除して、保存形式を移行します。次回からはパスワードなしで開きます。'),
+      h('label', {}, '現在のパスワード', pw),
+      h('button', { className: 'primary', type: 'submit' }, '解除して移行')),
     ...renderHelp(),
-    exists ? h('button', { onclick: wipe }, 'パスワードを忘れた(全データを削除)') : '',
+    h('button', { onclick: wipe }, 'パスワードを忘れた(全データを削除)'),
   );
 }
 
@@ -819,13 +818,7 @@ function tick() {
 }
 
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    hiddenAt = Date.now();
-    return;
-  }
-  if (data && hiddenAt && Date.now() - hiddenAt > AUTO_LOCK_MS) lockVault();
-  else if (data) { recompute(); tick(); }
-  hiddenAt = null;
+  if (!document.hidden && data) { recompute(); tick(); }
 });
 
 dragY($('alertCard'), '#alertCard', {
@@ -858,6 +851,6 @@ $('scrim').addEventListener('click', () => closeSheet());
 addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet(); });
 
 await loadDb();
-showVault();
+boot();
 setInterval(tick, 1000);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
