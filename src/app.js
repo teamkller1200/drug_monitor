@@ -13,8 +13,6 @@ const VERIFIED_ONLY = !new URLSearchParams(location.search).has('dev');
 const SEVERITY = { caution: '注意', danger: '危険', fatal: '命に関わる' };
 const PHASE = { none: '-', onset: '立ち上がり', peak: 'ピーク域', comedown: 'コムダウン', gone: 'ほぼ消失' };
 const ROUTE = { oral: '経口', sublingual: '舌下', nasal: '鼻腔', inhaled: '吸入', iv: '静注' };
-const RANK = { fatal: 0, danger: 1, caution: 2 };
-const TOAST_MS = { danger: 10000, caution: 6000 }; // fatal stays until closed
 const COLORS = ['#6fb5f5', '#d79bea', '#5bccd0', '#dbb47c', '#f08a7a', '#a8d672'];
 const DASHES = [[], [8, 4], [1.5, 4.5], [10, 4, 2, 4]];
 const SWATCH = ['solid', 'dashed', 'dotted', 'dashed'];
@@ -181,7 +179,6 @@ function currentAlerts() {
   return evaluate({ doses, results, drugs: db.drugs, rules: db.rules, limits: db.limits, now: Date.now() });
 }
 
-const alertKey = (a) => [a.severity, a.items, a.mechanism].join('|');
 const alertText = (a) => h('p', {}, h('b', {}, a.items.map(nameOf).join(' + ')), `: ${a.mechanism ?? ''}`);
 
 function renderAlerts() {
@@ -190,7 +187,6 @@ function renderAlerts() {
   if (key === alertsKey) return;
   alertsKey = key;
   current = { alerts, unknown };
-  syncToasts();
   renderBell();
   if (sheetOpen && sheetKind === 'warn') fillSheet();
 }
@@ -204,85 +200,6 @@ function renderBell() {
     badge.textContent = `${SEVERITY[alerts[0].severity][0]}${alerts.length}`;
   }
   $('bell').setAttribute('aria-label', alerts.length ? `警告 ${alerts.length}件(最も重い: ${SEVERITY[alerts[0].severity]})。一覧を開く` : '警告一覧を開く');
-}
-
-// ---- alert toasts: one detection, one toast; the list stays in the bell sheet ----
-const announced = new Set();
-let queue = [];
-let shownKey = null;
-let hiddenY = -400;
-
-const toastY = new Spring(hiddenY, (y) => {
-  const card = $('alertCard');
-  card.style.transform = reducedMotion.matches ? 'none' : `translate3d(0,${y}px,0)`;
-  card.style.opacity = reducedMotion.matches ? (y < 0 ? 0 : 1) : Math.max(0, 1 - (y / hiddenY) * 1.15);
-});
-
-function syncToasts() {
-  const keys = new Set(current.alerts.map(alertKey));
-  for (const k of [...announced]) {
-    if (keys.has(k)) continue;
-    announced.delete(k);
-    dismissToast(k);
-  }
-  for (const alert of current.alerts) {
-    const key = alertKey(alert);
-    if (announced.has(key)) continue;
-    announced.add(key);
-    const ms = TOAST_MS[alert.severity];
-    queue.push({ key, alert, timer: ms ? setTimeout(() => dismissToast(key), ms) : null });
-  }
-  queue.sort((a, b) => RANK[a.alert.severity] - RANK[b.alert.severity]);
-  renderToast();
-}
-
-function renderToast() {
-  const top = queue[0], card = $('alertCard'), fold = $('alertFold');
-  fold.hidden = queue.length < 2;
-  fold.replaceChildren(h('span', {}, `ほか ${queue.length - 1}件`), icon('chevron', 18));
-  if (!top) {
-    shownKey = null;
-    card.hidden = true;
-    return;
-  }
-  if (top.key === shownKey) return;
-  shownKey = top.key;
-  const a = top.alert;
-  card.className = `alert ${a.severity}`;
-  card.hidden = false;
-  card.replaceChildren(
-    h('div', { className: 'alerthead' },
-      h('b', {}, SEVERITY[a.severity]),
-      h('span', {}, `出典 ${a.source}`),
-      h('button', { className: 'close', type: 'button', 'aria-label': '警告を閉じる', onclick: () => dismissToast(top.key) }, icon('close', 18))),
-    alertText(a));
-  hiddenY = -(card.offsetHeight + 120);
-  toastY.set(hiddenY);
-  requestAnimationFrame(() => toastY.to(0));
-}
-
-function dismissToast(key, v = 0, z = 1) {
-  const item = queue.find((q) => q.key === key);
-  if (!item) return;
-  clearTimeout(item.timer);
-  const remove = () => {
-    queue = queue.filter((q) => q !== item);
-    if (shownKey === key) shownKey = null;
-    renderToast();
-  };
-  if (key === shownKey) toastY.to(hiddenY, { v, z, cb: remove });
-  else remove();
-}
-
-function clearToasts() {
-  queue.forEach((q) => clearTimeout(q.timer));
-  queue = [];
-  announced.clear();
-  alertsKey = null;
-  current = { alerts: [], unknown: [] };
-  toastY.stop();
-  renderToast();
-  renderBell();
 }
 
 // ---- sheets: warnings (bell, 緊急) and per-substance detail ----
@@ -351,7 +268,7 @@ function fillSheet() {
 }
 
 function setBackdropInert(on) {
-  for (const id of ['top', 'lock', 'view', 'nav', 'alerts']) $(id).inert = on;
+  for (const id of ['top', 'lock', 'view', 'nav']) $(id).inert = on;
 }
 
 function openSheet(kind, from, focus = null) {
@@ -424,6 +341,11 @@ function renderHome() {
   return [h('div', { className: 'home' },
     ids.length
       ? h('section', { className: 'glass chartcard', 'aria-label': '濃度タイムライン' },
+        h('div', { className: 'hero', id: 'hero' },
+          h('div', { className: 'heroName', id: 'heroName' },
+            h('span', { className: 'heroDot', id: 'heroDot' }), h('span', { id: 'heroLabel' })),
+          h('div', { className: 'heroVal' }, h('span', { id: 'heroPct' }), h('span', { className: 'heroUnit' }, '%')),
+          h('div', { className: 'heroSub', id: 'heroSub' })),
         h('div', { className: 'plot' },
           h('canvas', { id: 'chart', role: 'img', 'aria-label': `過去${WINDOW_H}時間から未来${WINDOW_H}時間の濃度の推移。縦軸は各物質のピークを100%とした割合。横にスクロールできます。` })),
         h('div', { className: 'chips' }, chips,
@@ -439,7 +361,27 @@ function renderHome() {
 function toggleSolo(id) {
   solo = solo === id ? null : id;
   for (const chip of document.querySelectorAll('.chip')) chip.setAttribute('aria-pressed', String(chip.dataset.id === solo));
-  drawChart(Date.now());
+  tickHome();
+}
+
+// The headline above the graph: same peak-ratio scale as the chart, so substances are comparable.
+function updateHero(now) {
+  if (!$('heroLabel')) return;
+  const pctOf = (r, values) => (r.peak ? (valueAt(r.t, values, now) / r.peak) * 100 : 0);
+  let best = null;
+  Object.entries(results).forEach(([id, r], i) => {
+    if (solo && id !== solo) return;
+    const pct = pctOf(r, r.ce);
+    if (!best || pct > best.pct) best = { id, r, i, pct };
+  });
+  if (!best) return;
+  const drug = drugById(best.id);
+  $('heroLabel').textContent = drug?.name ?? best.id;
+  $('heroPct').textContent = best.pct.toFixed(1);
+  $('heroDot').style.background = COLORS[best.i % COLORS.length];
+  const blood = valueAt(best.r.t, best.r.c, now);
+  const band = `${pctOf(best.r, best.r.low).toFixed(0)}-${pctOf(best.r, best.r.high).toFixed(0)}%`;
+  $('heroSub').textContent = `${drug?.status === 'estimated' ? '概算 ・ ' : ''}ピーク比 ・ 幅 ${band} ・ 血中 約${blood.toFixed(2)} mg/L ・ ${PHASE[phaseAt(best.r, now)]}`;
 }
 
 function tickHome() {
@@ -453,6 +395,7 @@ function tickHome() {
     $(`r-${id}`).textContent = `範囲 ${pct(r.low).toFixed(0)}-${pct(r.high).toFixed(0)}%`;
     $(`m-${id}`).textContent = `血中 約${valueAt(r.t, r.c, now).toFixed(2)} mg/L`;
   }
+  updateHero(now);
   drawChart(now);
 }
 
@@ -468,7 +411,10 @@ function drawChart(now) {
   c.clearRect(0, 0, w, ht);
   const style = getComputedStyle(document.documentElement);
   const muted = style.getPropertyValue('--muted');
-  const from = now - WINDOW_H * H, to = now + WINDOW_H * H;
+  // Start at the first recorded dose (at most 12h back) so no empty history is drawn.
+  const firstData = Math.min(...Object.values(results).map((r) => r.t[0]));
+  const from = Math.min(now, Math.max(now - WINDOW_H * H, Number.isFinite(firstData) ? firstData : now));
+  const to = from + 2 * WINDOW_H * H;
   // Colors stay tied to the full list so a substance keeps its color when shown alone.
   const entries = Object.entries(results).map(([id, r], i) => ({ id, r, i })).filter((e) => !solo || e.id === solo);
   const yMax = Math.max(1.1, ...entries.map(({ r }) => Math.max(...r.high) / (r.peak || 1)));
@@ -501,8 +447,12 @@ function drawChart(now) {
     c.lineTo(w - R, y(v));
     c.stroke();
   }
-  for (let t = -WINDOW_H; t <= WINDOW_H; t += 3) {
-    if (t) label(`${t > 0 ? '+' : '−'}${Math.abs(t)}h`, t === WINDOW_H ? w - 2 : x(now + t * H), ht - 6, t === WINDOW_H ? 'right' : 'center');
+  const stepH = 3;
+  for (let k = Math.ceil((from - now) / (stepH * H)); k * stepH <= (to - now) / H; k++) {
+    const t = k * stepH;
+    if (!t) continue;
+    const px = x(now + t * H);
+    label(`${t > 0 ? '+' : '−'}${Math.abs(t)}h`, px, ht - 6, px > w - R - 16 ? 'right' : px < L + 16 ? 'left' : 'center');
   }
   entries.forEach(({ r, i }) => {
     const color = COLORS[i % COLORS.length];
@@ -533,7 +483,7 @@ function drawChart(now) {
   c.stroke();
   c.fillStyle = style.getPropertyValue('--text');
   c.font = '700 13px system-ui';
-  label('今', x(now), ht - 6, 'center');
+  label('今', Math.max(x(now), L + 14), ht - 6, 'center');
   entries.forEach(({ r, i }) => {
     c.beginPath();
     c.arc(x(now), y(valueAt(r.t, r.ce, now) / (r.peak || 1)), 4.5, 0, 2 * Math.PI);
@@ -549,9 +499,7 @@ function drawChart(now) {
   c.fillStyle = muted;
   c.font = '11.5px system-ui';
   for (const v of [0, 0.5, 1]) label(`${v * 100}%`, sx + L - 5, y(v) + 4, 'right');
-  label('ピーク比 %・帯は不確実性', sx + 2, 11);
-  label('これまで', L + 4, T + 13);
-  label('これから(予測)', w - R - 4, T + 13, 'right');
+  label('ピーク比 %', sx + 2, 11);
 }
 
 // ---- log ----
@@ -791,7 +739,8 @@ function boot() {
 
 // Older versions encrypted the vault with a password. Read it once, then keep it plain.
 function showMigration() {
-  clearToasts();
+  alertsKey = null;
+  current = { alerts: [], unknown: [] };
   resetSheet();
   lockKey = '';
   $('actions').hidden = true;
@@ -834,15 +783,6 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden && data) { recompute(); tick(); }
 });
 
-dragY($('alertCard'), '#alertCard', {
-  onStart: () => toastY.stop(),
-  onMove: (dy) => toastY.set(dy > 0 ? rubberband(dy, $('alertCard').offsetHeight) : dy),
-  onEnd: (v, cancel) => {
-    if (!cancel && toastY.x + project(v) < -$('alertCard').offsetHeight * 0.5) dismissToast(shownKey, v, Math.abs(v) > 300 ? 0.8 : 1);
-    else toastY.to(0, { v, z: Math.abs(v) > 300 ? 0.8 : 1 });
-  },
-});
-
 let dragFrom = 1;
 dragY($('sheet'), '.grab', {
   onStart: () => { sheetP.stop(); dragFrom = sheetP.x; },
@@ -859,7 +799,6 @@ dragY($('sheet'), '.grab', {
 
 $('bell').addEventListener('click', (e) => openSheet('warn', e.currentTarget));
 $('sos').addEventListener('click', (e) => openSheet('warn', e.currentTarget));
-$('alertFold').addEventListener('click', (e) => openSheet('warn', e.currentTarget));
 $('scrim').addEventListener('click', () => closeSheet());
 addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet(); });
 

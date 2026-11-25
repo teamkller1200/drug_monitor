@@ -74,6 +74,13 @@ fieldset { border: 0; margin: 0; padding: 0; }
 .home { display: flex; flex-direction: column; gap: 8px; min-height: 100%; }
 .chartcard { flex: 1; display: flex; flex-direction: column; padding: 6px; border-radius: 28px; }
 .chartcard.empty { justify-content: center; padding: 24px; text-align: center; }
+.hero { flex: none; padding: 8px 14px 4px; }
+.heroDot { flex: none; width: 11px; height: 11px; border-radius: 6px; background: var(--muted); }
+.heroName { display: flex; align-items: center; gap: 8px; margin-top: 1px; font-size: 19px; font-weight: 700; line-height: 1.25; }
+.heroVal { display: flex; align-items: baseline; gap: 4px; margin-top: -4px; }
+.heroVal #heroPct { font-size: clamp(42px, 14vw, 58px); font-weight: 800; line-height: 1.05; letter-spacing: -.04em; }
+.heroUnit { color: var(--muted); font-size: 20px; font-weight: 700; }
+.heroSub { color: var(--muted); font-size: 12.5px; }
 /* 横軸は表示幅の2倍で描き、横スクロールで残りを見る */
 .plot { position: relative; flex: 1; min-height: 200px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 .plot canvas { width: 200%; height: calc(100% - 6px); }
@@ -100,17 +107,7 @@ canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%
 .alert.danger { background: var(--danger-bg); color: var(--danger); border-color: var(--danger-line); }
 .alert.fatal { background: var(--fatal-bg); color: var(--fatal); border-color: var(--fatal-line); }
 
-#alerts { position: fixed; z-index: 20; top: calc(68px + env(safe-area-inset-top)); left: 0; right: 0; width: calc(100% - 16px); max-width: 544px; margin: auto; pointer-events: none; }
-#alerts > * { pointer-events: auto; }
-#alertCard { border-radius: 28px; box-shadow: var(--edge), 0 8px 24px rgba(0, 0, 0, .45); touch-action: none; will-change: transform, opacity; }
-#alertCard.fatal { background: rgba(107, 15, 16, .86); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
-#alertCard p { font-size: 16px; }
-.alerthead { display: flex; align-items: center; gap: 8px; }
-.alerthead b { font-size: 14px; }
-#alertCard.fatal .alerthead b { padding: 3px 10px; border-radius: 999px; background: var(--fatal); color: var(--fatal-bg); }
 .close { display: grid; place-items: center; width: 44px; height: 44px; margin-left: auto; padding: 0; border: 0; border-radius: 22px; background: none; color: inherit; }
-#alertCard .close { margin-block: -8px; margin-right: -8px; }
-#alertFold { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: calc(100% - 24px); margin: 8px auto 0; border: 0; border-radius: 22px; font-size: 13px; }
 
 /* sheets */
 #scrim { position: fixed; z-index: 24; inset: 0; background: rgba(0, 0, 0, .45); opacity: 0; }
@@ -143,8 +140,7 @@ canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%
 #toast:empty { display: none; }
 
 @media (prefers-reduced-transparency: reduce) {
-  .glass, nav, .card, #alertCard.fatal, #sheet { background: var(--card); -webkit-backdrop-filter: none; backdrop-filter: none; }
-  #alertCard.fatal { background: var(--fatal-bg); }
+  .glass, nav, .card, #sheet { background: var(--card); -webkit-backdrop-filter: none; backdrop-filter: none; }
   body { background: var(--bg); }
 }
 @media (prefers-contrast: more) {
