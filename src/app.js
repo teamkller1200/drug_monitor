@@ -503,9 +503,10 @@ function drawChart(now) {
 }
 
 // ---- log ----
-const localInput = (d) => {
+const localParts = (d) => {
   const t = new Date(d);
-  return new Date(t.getTime() - t.getTimezoneOffset() * MIN).toISOString().slice(0, 16);
+  const local = new Date(t.getTime() - t.getTimezoneOffset() * MIN).toISOString();
+  return { date: local.slice(0, 10), time: local.slice(11, 16) };
 };
 
 function routesFor(itemId) {
@@ -548,14 +549,16 @@ function renderLog() {
   };
   item.addEventListener('change', syncUnit);
   syncUnit();
-  const when = h('input', { id: 'when', type: 'datetime-local', value: localInput(src.takenAt ?? Date.now()) });
+  const first = localParts(src.takenAt ?? Date.now());
+  const whenDate = h('input', { id: 'whenDate', type: 'date', value: first.date });
+  const whenTime = h('input', { id: 'whenTime', type: 'time', step: '60', value: first.time });
   const submit = async (e) => {
     e.preventDefault();
     let lo = Number(min.value), hi = max.value === '' ? lo : Number(max.value);
-    const takenAt = new Date(when.value);
+    const takenAt = new Date(`${whenDate.value}T${whenTime.value}`);
     const pct = Number(abv.value);
-    if (!(lo > 0) || !(hi >= lo) || Number.isNaN(takenAt.getTime()) || !route.value || (isAlcohol() && !(pct > 0 && pct <= 100))) {
-      toast(isAlcohol() ? '度数・量・時刻を確認してください(度数は0〜100%、最大は最小以上)' : '量と時刻を確認してください(最大は最小以上)');
+    if (!(lo > 0) || !(hi >= lo) || !whenDate.value || !whenTime.value || Number.isNaN(takenAt.getTime()) || !route.value || (isAlcohol() && !(pct > 0 && pct <= 100))) {
+      toast(isAlcohol() ? '度数・量・日時を確認してください(度数は0〜100%、最大は最小以上)' : '量と日時を確認してください(最大は最小以上)');
       return;
     }
     const serving = isAlcohol() ? { abv: pct, mlMin: lo, mlMax: hi } : undefined;
@@ -580,7 +583,8 @@ function renderLog() {
         h('div', { className: 'row' },
           abvLabel, minLabel,
           h('label', { className: 'grow' }, '最大(不確かなとき)', max)),
-        h('label', {}, '時刻', when),
+        h('label', {}, '日付', whenDate),
+        h('label', {}, '時刻', whenTime),
         h('button', { className: 'primary', type: 'submit' }, editing ? '更新' : '記録する'))),
     last && !editing ? h('button', { disabled: blocked, onclick: () => addDose({ ...last, id: undefined, takenAt: new Date().toISOString() }).then(() => { toast('記録しました'); go('home'); }) },
       `直前と同じ内容を今記録(${doseText(last)})`) : null,
@@ -867,7 +871,7 @@ function render() {
   $('nav').replaceChildren(...Object.entries(TABS).map(([id, label]) =>
     h('button', { 'aria-current': id === tab ? 'page' : 'false', onclick: () => dispatch('nav', () => go(id)) }, label)));
   $('actions').hidden = false;
-  $('view').replaceChildren(...VIEWS[tab]().flat());
+  $('view').replaceChildren(...VIEWS[tab]().flat().filter((node) => node != null));
   renderAlerts();
   if (sheetOpen) fillSheet();
   if (tab === 'home') tickHome();
