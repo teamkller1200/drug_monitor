@@ -639,6 +639,148 @@ function renderProfile() {
       h('button', { className: 'primary', type: 'submit' }, '保存')))];
 }
 
+// ---- first-run tour: the profile comes before anything else ----
+let tourStep = 0;
+let tourDraft = null;
+let tourSpec = null;
+
+const tourOpt = (v) => {
+  const n = Number(v);
+  return v === '' || v === undefined || v === null || !Number.isFinite(n) ? undefined : n;
+};
+
+function tourSteps() {
+  const p = tourDraft;
+  const num = (key) => h('input', {
+    type: 'number', inputMode: 'decimal', min: '0', step: 'any', value: p[key] ?? '',
+    oninput: (e) => { p[key] = e.target.value; tourValidity(); },
+  });
+  const sel = (key, opts) => {
+    const s = h('select', { onchange: (e) => { p[key] = e.target.value; } },
+      Object.entries(opts).map(([v, t]) => h('option', { value: v }, t)));
+    s.value = p[key] ?? '';
+    return s;
+  };
+  const has = (v) => v !== '' && v !== undefined && v !== null;
+  const rows = [
+    ['体重', Number(p.weightKg) > 0 ? `${Number(p.weightKg)} kg` : '未入力'],
+    ['年齢', has(p.age) ? `${p.age} 歳` : '未入力'],
+    ['性別', { male: '男性', female: '女性' }[p.sex] ?? '未入力'],
+    ['喫煙', p.smoker ? 'する' : 'しない'],
+    ['腎機能 eGFR', has(p.egfr) ? String(p.egfr) : '未入力'],
+    ['CYP2D6 型', { normal: '通常', low: '低下', poor: '欠損' }[p.cyp2d6] ?? '不明'],
+  ];
+  return [
+    {
+      title: 'はじめに',
+      body: () => [
+        h('p', {}, '飲んだ薬や物質の、予想される血中濃度と作用の段階を表示します。'),
+        h('p', { className: 'muted' }, '表示は母集団平均に基づく推定で、実際の血中濃度とは大きく異なることがあります。服薬・用量の判断には使わないでください。'),
+        h('p', {}, '計算に使うプロフィールを先に入力します。データは端末内にのみ保存されます。'),
+      ],
+      label: 'はじめる',
+      valid: () => true,
+    },
+    {
+      title: '体重',
+      body: () => [
+        h('p', { className: 'muted' }, '血中濃度の計算に使います。'),
+        h('label', {}, '体重 (kg)', num('weightKg')),
+      ],
+      valid: () => Number(p.weightKg) > 0,
+      error: '体重を入力してください',
+    },
+    {
+      title: '年齢と性別',
+      body: () => [
+        h('p', { className: 'muted' }, 'わからなければ未入力のままで構いません。'),
+        h('label', {}, '年齢', num('age')),
+        h('label', {}, '性別', sel('sex', { '': '未入力', male: '男性', female: '女性' })),
+      ],
+      valid: () => true,
+    },
+    {
+      title: '喫煙',
+      body: () => [
+        h('p', { className: 'muted' }, '喫煙は一部の薬の代謝を速めます。'),
+        h('label', { className: 'check' }, h('input', { type: 'checkbox', checked: !!p.smoker, onchange: (e) => { p.smoker = e.target.checked; } }), '喫煙する'),
+      ],
+      valid: () => true,
+    },
+    {
+      title: '腎機能と体質',
+      body: () => [
+        h('p', { className: 'muted' }, '検査結果や遺伝子型がわかる場合だけ入力してください。未入力でも推定します。'),
+        h('label', {}, '腎機能 eGFR(任意)', num('egfr')),
+        h('label', {}, 'CYP2D6 型(任意)', sel('cyp2d6', { '': '不明', normal: '通常', low: '低下', poor: '欠損' })),
+      ],
+      valid: () => true,
+    },
+    {
+      title: '確認',
+      body: () => [
+        ...rows.map(([k, v]) => h('div', { className: 'kv' }, h('span', { className: 'muted' }, k), h('b', {}, v))),
+        h('p', { className: 'muted note' }, 'あとからプロフィール画面で変更できます。'),
+      ],
+      label: '保存してはじめる',
+      valid: () => Number(p.weightKg) > 0,
+      error: '体重を入力してください',
+    },
+  ];
+}
+
+function tourValidity() {
+  const btn = $('tour').querySelector('.foot .primary');
+  if (btn && tourSpec) btn.disabled = !tourSpec.valid();
+}
+
+function renderTour() {
+  const steps = tourSteps();
+  tourSpec = steps[tourStep];
+  const title = h('h2', { tabindex: '-1' }, tourSpec.title);
+  const next = h('button', { className: 'primary', type: 'button', disabled: !tourSpec.valid() }, tourSpec.label ?? '次へ');
+  next.addEventListener('click', () => tourNext(steps));
+  $('tour').replaceChildren(h('div', { className: 'glass tourcard' },
+    h('div', { className: 'tourtop' },
+      h('span', { className: 'step' }, `${tourStep + 1} / ${steps.length}`),
+      h('span', { className: 'dots', 'aria-hidden': 'true' }, steps.map((_, i) => h('i', { className: i <= tourStep ? 'on' : '' })))),
+    h('div', { className: 'tourbody' }, title, ...tourSpec.body()),
+    h('div', { className: 'foot' },
+      tourStep ? h('button', { type: 'button', onclick: () => { tourStep -= 1; renderTour(); } }, '戻る') : null,
+      next)));
+  title.focus({ preventScroll: true });
+}
+
+function tourNext(steps) {
+  if (!tourSpec.valid()) { toast(tourSpec.error ?? '入力してください'); return; }
+  if (tourStep < steps.length - 1) { tourStep += 1; renderTour(); return; }
+  const p = tourDraft;
+  commit('settings:update', () => {
+    data.profile = {
+      weightKg: Number(p.weightKg), age: tourOpt(p.age), egfr: tourOpt(p.egfr),
+      sex: p.sex || undefined, cyp2d6: p.cyp2d6 || undefined, smoker: !!p.smoker,
+    };
+    data.settings.tourDone = true;
+  }).then(() => { closeTour(); go('home'); toast('プロフィールを保存しました'); });
+}
+
+function showTour(prefill = true) {
+  tourStep = 0;
+  tourDraft = prefill ? { ...(data.profile ?? {}) } : {};
+  $('tour').hidden = false;
+  setBackdropInert(true);
+  renderTour();
+}
+
+function closeTour() {
+  tourStep = 0;
+  tourDraft = null;
+  tourSpec = null;
+  $('tour').replaceChildren();
+  $('tour').hidden = true;
+  setBackdropInert(false);
+}
+
 // ---- settings ----
 function exportData() {
   dispatch('data:export', () => {
@@ -671,6 +813,7 @@ function wipe() {
     tab = 'profile';
     render();
     renderLock();
+    showTour(false);
   });
 }
 
@@ -735,6 +878,7 @@ function boot() {
   tab = fresh ? 'profile' : 'home';
   render();
   renderLock();
+  if (!data.settings?.tourDone) showTour(!fresh);
 }
 
 // Older versions encrypted the vault with a password. Read it once, then keep it plain.
@@ -751,6 +895,8 @@ function showMigration() {
     e.preventDefault();
     try {
       data = validateData(await store.unlockLegacy(pw.value));
+      // Migrated installs already have a profile, so the first-run tour stays away.
+      if (!data.settings.tourDone) { data.settings.tourDone = true; store.save(data); }
     } catch {
       toast('パスワードが違います');
       return;
