@@ -13,7 +13,7 @@ const VERIFIED_ONLY = !new URLSearchParams(location.search).has('dev');
 const SEVERITY = { caution: '注意', danger: '危険', fatal: '命に関わる' };
 const PHASE = { none: '-', onset: '立ち上がり', peak: 'ピーク域', comedown: 'コムダウン', gone: 'ほぼ消失' };
 const ROUTE = { oral: '経口', sublingual: '舌下', nasal: '鼻腔', inhaled: '吸入', iv: '静注' };
-const COLORS = ['#6fb5f5', '#d79bea', '#5bccd0', '#dbb47c', '#f08a7a', '#a8d672'];
+const COLORS = ['#0054e3', '#8e24aa', '#00838f', '#c77800', '#d32f2f', '#2e7d32'];
 const DASHES = [[], [8, 4], [1.5, 4.5], [10, 4, 2, 4]];
 const SWATCH = ['solid', 'dashed', 'dotted', 'dashed'];
 const TABS = { home: 'ホーム', history: '履歴', profile: 'プロフィール', settings: '設定' };
@@ -435,7 +435,7 @@ function drawChart(now) {
     c.fillText(text, px, py);
   };
 
-  c.fillStyle = 'rgba(255,255,255,.05)';
+  c.fillStyle = 'rgba(0, 84, 227, .07)';
   c.fillRect(x(now), T, w - R - x(now), ht - T - B);
   c.fillStyle = muted;
   c.font = '11.5px system-ui';
@@ -957,6 +957,7 @@ dragY($('sheet'), '.grab', {
 $('bell').addEventListener('click', (e) => openSheet('warn', e.currentTarget));
 $('sos').addEventListener('click', (e) => openSheet('warn', e.currentTarget));
 $('scrim').addEventListener('click', () => closeSheet());
+document.addEventListener('gesturestart', (e) => e.preventDefault());
 addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet(); });
 
 await loadDb();
