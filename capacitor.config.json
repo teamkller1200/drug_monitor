@@ -1,0 +1,10 @@
+{
+  "appId": "io.github.drugmonitor.app",
+  "appName": "Drug Monitor",
+  "webDir": "www",
+  "backgroundColor": "#14161a",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#14161a"
+  }
+}

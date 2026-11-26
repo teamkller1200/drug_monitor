@@ -1,0 +1,76 @@
+name: Build unsigned IPA
+
+# Builds the Capacitor iOS app without code signing and uploads Payload-zipped
+# .ipa as an artifact. Sign it at install time with a sideloading tool
+# (AltStore, SideStore, Sideloadly, ...).
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'index.html'
+      - 'manifest.json'
+      - 'icon.svg'
+      - 'src/**'
+      - 'data/**'
+      - 'ios/**'
+      - 'capacitor.config.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/build-www.mjs'
+      - '.github/workflows/ios-ipa.yml'
+
+concurrency:
+  group: ios-ipa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Bundle web assets into the iOS project
+        run: npm run ios:sync
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build (unsigned)
+        run: |
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package IPA
+        run: |
+          mkdir -p dist/Payload
+          cp -R build/Build/Products/Release-iphoneos/App.app dist/Payload/
+          cd dist && zip -qry DrugMonitor.ipa Payload
+          ls -lh DrugMonitor.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DrugMonitor-ipa-${{ github.run_number }}
+          path: dist/DrugMonitor.ipa
+          if-no-files-found: error

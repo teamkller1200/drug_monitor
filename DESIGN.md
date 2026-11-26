@@ -145,3 +145,10 @@ M4はM1以降と並行して進め、`verified` が揃った物質から順にUI
 - 相互作用の重大度の割り当てレビュー(薬剤師等の確認)
 - 中毒情報センター等の連絡先の最新確認
 - 大麻・覚醒剤・MDMA・ケタミンの収録可否(第2段階)
+
+## iOSアプリ(サイドロード用IPA)
+
+- Capacitor で静的PWAをそのまま `WKWebView` に同梱する。`npm run build` が `www/` に配信物をコピーし、`npm run ios:sync` が `ios/App/App/public` へ反映する
+- `.github/workflows/ios-ipa.yml` が macOS ランナーで署名なしの `.ipa` を作り、Actions の成果物として置く。署名はインストール時に AltStore / SideStore / Sideloadly 等で行う
+- アプリ内では Service Worker は動かない(`capacitor://` スキーム)が、全ファイルを同梱するのでオフラインで動く。データは WebView の `localStorage` に保存され、PWA版(Safari)とは共有されない
+- アイコンと起動画面は `icon.svg` の曲線から作った PNG を `ios/App/App/Assets.xcassets` に置いている

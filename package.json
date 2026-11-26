@@ -3,6 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test test/"
+    "test": "node --test test/",
+    "build": "node scripts/build-www.mjs",
+    "ios:sync": "npm run build && cap sync ios"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.6.3",
+    "@capacitor/core": "^8.6.3",
+    "@capacitor/ios": "^8.6.3"
   }
 }
