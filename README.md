@@ -6,6 +6,10 @@
 **端末内完結型のハームリダクションアプリ**
 
 <p>
+  <a href="https://teamkller1200.github.io/drug_monitor/"><strong>🌐 Web 版を開く（GitHub Pages）</strong></a>
+</p>
+
+<p>
   <a href="#-画面イメージ">画面イメージ</a> •
   <a href="#-主な機能">主な機能</a> •
   <a href="#-はじめかた">はじめかた</a> •
@@ -106,6 +110,8 @@
 
 ### 🌐 Web / PWA として使う
 
+👉 **[https://teamkller1200.github.io/drug_monitor/](https://teamkller1200.github.io/drug_monitor/)**（GitHub Pages）
+
 静的ファイルのみで動作するため、PC・スマートフォンのブラウザからも利用できます。ローカル環境で起動する場合は、任意の静的サーバーでルートディレクトリを配信してください。
 
 ```bash
@@ -153,12 +159,12 @@ flowchart LR
 
 ### 📊 収録データファイル
 
-| データファイル | 収録数 | 役割 |
-| :--- | :---: | :--- |
-| [`data/drugs.json`](data/drugs.json) | **14 物質** | 薬物動態パラメータ（出典・`status` 必須） |
-| [`data/products.json`](data/products.json) | **3 製品** | 市販薬などの製品 → 含有成分マッピング |
+| データファイル                                     |    収録数     | 役割                                               |
+| :------------------------------------------------- | :-----------: | :------------------------------------------------- |
+| [`data/drugs.json`](data/drugs.json)               |  **14 物質**  | 薬物動態パラメータ（出典・`status` 必須）          |
+| [`data/products.json`](data/products.json)         |  **3 製品**   | 市販薬などの製品 → 含有成分マッピング              |
 | [`data/interactions.json`](data/interactions.json) | **17 ルール** | 物質間の相互作用リスク（注意 / 危険 / 命に関わる） |
-| [`data/limits.json`](data/limits.json) | **4 基準** | 添付文書基準の累積量上限 |
+| [`data/limits.json`](data/limits.json)             |  **4 基準**   | 添付文書基準の累積量上限                           |
 
 ### 💻 開発・テスト・ビルド
 
