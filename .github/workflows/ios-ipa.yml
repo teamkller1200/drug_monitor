@@ -62,6 +62,16 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             build
 
+      - name: Check the app bundle
+        run: |
+          APP=build/Build/Products/Release-iphoneos/App.app
+          ls -la "$APP" "$APP/Frameworks" || true
+          otool -L "$APP/App" | grep -E 'Capacitor|Cordova'
+          for f in Capacitor Cordova; do
+            test -f "$APP/Frameworks/$f.framework/$f" || { echo "::error::$f.framework is not embedded"; exit 1; }
+          done
+          test -f "$APP/public/index.html" || { echo "::error::web assets missing"; exit 1; }
+
       - name: Package IPA
         run: |
           mkdir -p dist/Payload
