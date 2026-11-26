@@ -743,7 +743,8 @@ function renderTour() {
   $('tour').replaceChildren(h('div', { className: 'glass tourcard' },
     h('div', { className: 'tourtop' },
       h('span', { className: 'step' }, `${tourStep + 1} / ${steps.length}`),
-      h('span', { className: 'dots', 'aria-hidden': 'true' }, steps.map((_, i) => h('i', { className: i <= tourStep ? 'on' : '' })))),
+      h('span', { className: 'dots', 'aria-hidden': 'true' }, steps.map((_, i) => h('i', { className: i <= tourStep ? 'on' : '' }))),
+      h('button', { className: 'skip', type: 'button', onclick: skipTour }, 'スキップ')),
     h('div', { className: 'tourbody' }, title, ...tourSpec.body()),
     h('div', { className: 'foot' },
       tourStep ? h('button', { type: 'button', onclick: () => { tourStep -= 1; renderTour(); } }, '戻る') : null,
@@ -762,6 +763,12 @@ function tourNext(steps) {
     };
     data.settings.tourDone = true;
   }).then(() => { closeTour(); go('home'); toast('プロフィールを保存しました'); });
+}
+
+function skipTour() {
+  // Skipping still counts as done; the profile falls back to its defaults until it is edited.
+  commit('settings:update', () => { data.settings.tourDone = true; })
+    .then(() => { closeTour(); go('home'); toast('あとからプロフィールで入力できます'); });
 }
 
 function showTour(prefill = true) {

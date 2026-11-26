@@ -117,8 +117,10 @@ canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%
 .dots { display: flex; gap: 6px; margin-left: auto; }
 .dots i { width: 6px; height: 6px; border-radius: 3px; background: var(--line); }
 .dots i.on { width: 22px; background: var(--accent); }
+.tourtop .skip { min-height: 40px; margin-right: -6px; padding: 0 10px; border: 0; background: none; color: var(--accent); font-size: 13.5px; font-weight: 700; }
 .tourbody { flex: 1; min-height: 0; overflow-y: auto; }
 .tourbody h2 { margin: 4px 0 10px; font-size: 22px; letter-spacing: -.02em; }
+.tourbody h2:focus { outline: none; }
 .tourbody p { margin: 0 0 10px; }
 .tourbody .note { margin-top: 14px; }
 .tourbody .kv { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); }
